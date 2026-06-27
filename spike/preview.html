@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8" />
+<title>Streif — Volda buildings preview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/pmtiles@3.0.7/dist/pmtiles.js"></script>
+<style>
+  body { margin: 0; font-family: sans-serif; }
+  #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+  #legend { position: absolute; top: 10px; right: 10px; background: #fff; padding: 10px 12px;
+            border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.3); font-size: 13px; line-height: 1.7; }
+  #legend b { display: block; margin-bottom: 4px; }
+  .sw { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="legend">
+  <b>Типи будівель — Volda</b>
+  <div><span class="sw" style="background:#E0392B"></span>Житло</div>
+  <div><span class="sw" style="background:#F2A007"></span>Hytte</div>
+  <div><span class="sw" style="background:#2479C2"></span>Громадське</div>
+  <div><span class="sw" style="background:#9A3DC2"></span>Сакральне</div>
+  <div><span class="sw" style="background:#3FA340"></span>Господарче</div>
+  <div><span class="sw" style="background:#CC5599"></span>Інше</div>
+</div>
+<script>
+  const protocol = new pmtiles.Protocol();
+  maplibregl.addProtocol('pmtiles', protocol.tile);
+  const pmurl = 'pmtiles://' + location.origin + '/buildings.pmtiles';
+  const map = new maplibregl.Map({
+    container: 'map',
+    center: [6.071, 62.146],  // Volda
+    zoom: 12,
+    style: {
+      version: 8,
+      sources: {
+        base: {
+          type: 'raster',
+          tiles: ['https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png'],
+          tileSize: 256,
+          attribution: '© Kartverket'
+        },
+        buildings: { type: 'vector', url: pmurl }
+      },
+      layers: [
+        { id: 'base', type: 'raster', source: 'base' },
+        {
+          id: 'buildings', type: 'fill', source: 'buildings', 'source-layer': 'buildings',
+          paint: {
+            'fill-color': ['match', ['get', 'type'],
+              'housing', '#E0392B',
+              'hytte', '#F2A007',
+              'public', '#2479C2',
+              'sacral', '#9A3DC2',
+              'outbuilding', '#3FA340',
+              'other', '#CC5599',
+              '#CC5599'],
+            'fill-opacity': 0.9,
+            'fill-outline-color': 'rgba(20,20,20,0.55)'
+          }
+        }
+      ]
+    }
+  });
+  map.addControl(new maplibregl.NavigationControl());
+</script>
+</body>
+</html>

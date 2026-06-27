@@ -1,0 +1,33 @@
+# === Build outputs / binaries (регенеруються) ===
+*.apk
+*.aab
+apks/
+
+# === Згенеровані / завантажені geo-дані (регенеруються spike-скриптами) ===
+*.pmtiles
+*.osm
+*.geojson
+seed_areas/
+_cache_*
+
+# === Android / Gradle (коли з'явиться справжній проєкт) ===
+build/
+.gradle/
+local.properties
+*.iml
+.cxx/
+captures/
+.externalNativeBuild/
+
+# === IDE ===
+.idea/
+.vscode/
+
+# === OS / OneDrive ===
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# NB свідомо ЛИШАЄМО у версіюванні: код (.kt/.py/.ps1/.html), доки (.md),
+# польові дані (diag_field*.csv, fieldtest/*.csv) і скриншоти-докази (*.png).
+# Якщо схочеш лінший репозиторій — додай сюди *.png.

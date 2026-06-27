@@ -1,0 +1,8 @@
+[out:xml][timeout:300];
+area["admin_level"="7"]["name"="Volda"]->.a;
+(
+  way["building"](area.a);
+  relation["building"](area.a);
+);
+(._;>;);
+out body;

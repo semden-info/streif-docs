@@ -1,0 +1,8 @@
+# Унормувати переноси рядків (у репозиторії — LF, у робочій копії — як у ОС)
+* text=auto
+
+# Бінарні файли — не чіпати
+*.png binary
+*.apk binary
+*.pmtiles binary
+*.osm binary

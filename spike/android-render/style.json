@@ -1,0 +1,28 @@
+{
+  "version": 8,
+  "sources": {
+    "base": {
+      "type": "raster",
+      "tiles": ["https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png"],
+      "tileSize": 256,
+      "attribution": "© Kartverket"
+    },
+    "buildings": {
+      "type": "vector",
+      "url": "pmtiles://asset://buildings.pmtiles"
+    }
+  },
+  "layers": [
+    { "id": "base", "type": "raster", "source": "base" },
+    {
+      "id": "buildings",
+      "type": "fill",
+      "source": "buildings",
+      "source-layer": "buildings",
+      "paint": {
+        "fill-color": "#9CA3AA",
+        "fill-opacity": 0.85
+      }
+    }
+  ]
+}

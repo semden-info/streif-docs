@@ -1,0 +1,32 @@
+You are doing an INDEPENDENT code review of an Android app "Streif" — focus on the NEW "on-demand area download" feature (throwaway spike code, but must work on a real walk and must not crash, leak, corrupt persisted state, or have data races).
+
+Stack: Kotlin, minSdk 24, targetSdk 36, MapLibre Native, Google Play services FusedLocation + Activity Recognition.
+
+WHAT THE ON-DEMAND FEATURE DOES (the change to review):
+Previously buildings were bundled in one big geojson loaded at startup. Field testing proved fixed bundles don't fit a user who roams a wide region. So now:
+- `BuildingStore` is INCREMENTAL + thread-safe: starts EMPTY, buildings are added at runtime via `addFeatures()` (synchronized). It holds a uniform grid for radius/segment matching.
+- `AreaLoader` is called on every accepted GPS fix: it computes the ~0.05° tile around you and, if that tile isn't loaded/loading, fetches it on a single-thread background executor — first from local cache (`AreaCache`, files in filesDir), else from `OverpassAreaSource` (HTTP POST to public Overpass mirrors + an XmlPullParser OSM parser producing Polygon Features). Fetched features → `BuildingStore.addFeatures()` → cache saved → posts `onAreaLoaded()` to the main thread.
+- `TrackingRepository` (a Kotlin object singleton, all its mutation happens on the MAIN looper from the Fused callback): on each fix it calls `areaLoader.ensureArea(lat,lon)`, then does accuracy/vehicle-gating and segment matching. `onAreaLoaded()` (main thread) runs `reconcilePersisted()` (re-reveal saved building_ids whose buildings just arrived) + a re-match at the current point + notifies the UI listener.
+- Persisted reveals are stored as `building_id` lines (VisitStore). On-demand fetched ids are "w<osm_way_id>".
+
+THREADING MODEL (verify it's actually safe):
+- `BuildingStore.addFeatures()` runs on AreaLoader's BACKGROUND executor thread; `BuildingStore.match()/matchSegment()/collectionFor()/size` run on the MAIN thread (from TrackingRepository.onLocation). They are guarded by `@Synchronized` / `synchronized(this)` on the BuildingStore instance.
+- `onAreaLoaded()` is posted to the main thread; it touches TrackingRepository state (revealed set, revealedFeatures, byType, buf) which is otherwise only touched on the main thread.
+
+Please READ and review these files (paths relative to the repo root you are in):
+- app/src/main/java/no/streif/spike/BuildingStore.kt
+- app/src/main/java/no/streif/spike/AreaSource.kt
+- app/src/main/java/no/streif/spike/AreaCache.kt
+- app/src/main/java/no/streif/spike/AreaLoader.kt
+- app/src/main/java/no/streif/spike/TrackingRepository.kt
+- app/src/main/java/no/streif/spike/MainActivity.kt
+
+Focus ONLY on REAL bugs, especially: data races / thread-safety holes in the incremental store and loader; correctness of tile/area logic and dedup; the persisted-id reconcile (note the "w" prefix / id-format mismatch); cache read/write robustness; network/HTTP error handling on the Overpass path; lifecycle (the singleton + areaLoader surviving Activity recreation); resource leaks (executors never shut down); the OSM XmlPullParser edge cases. Skip style nits.
+
+For EACH finding output exactly:
+- SEVERITY: critical | high | medium | low
+- FILE + locus (function or line)
+- PROBLEM: what goes wrong + the concrete trigger scenario
+- FIX: a concrete, minimal fix
+
+Be adversarial and specific; only report issues justified from the actual code. End with a one-paragraph overall assessment of the on-demand design.

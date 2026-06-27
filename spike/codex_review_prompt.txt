@@ -1,0 +1,24 @@
+You are doing an INDEPENDENT code review of an Android app "Streif" — Spike-2 Stage A (a throwaway prototype, but it must work on a real walk and must not crash, leak, or corrupt persisted state).
+
+Stack: Kotlin, minSdk 24, targetSdk 36, View-based MapLibre Native MapView, Google Play services FusedLocation. Flow: user taps "Старт" → MainActivity starts WalkTrackingService (foreground service, type=location) → FusedLocationProvider streams GPS to TrackingRepository (a Kotlin object singleton) → segment-buffer matching against BuildingStore (in-memory uniform grid of ~10,800 building centroids) → newly revealed buildings are persisted via VisitStore (a file of building_id lines) and pushed to MainActivity (TrackingRepository.Listener), which updates a MapLibre GeoJsonSource overlay + a "me" marker. It is FOREGROUND-ONLY tracking (no ACCESS_BACKGROUND_LOCATION); the service is started from the visible activity.
+
+Please READ and review these files (paths relative to the repo root you are in):
+- app/src/main/java/no/streif/spike/MainActivity.kt
+- app/src/main/java/no/streif/spike/TrackingRepository.kt
+- app/src/main/java/no/streif/spike/WalkTrackingService.kt
+- app/src/main/java/no/streif/spike/LocationProvider.kt
+- app/src/main/java/no/streif/spike/BuildingStore.kt
+- app/src/main/java/no/streif/spike/VisitStore.kt
+- app/src/main/java/no/streif/spike/PerfHarness.kt
+- app/src/main/AndroidManifest.xml
+- app/build.gradle.kts
+
+Focus ONLY on REAL bugs: correctness, threading/races, Android lifecycle, foreground-service rules (Android 14/15/16), runtime permissions, persistence correctness, and resource/memory leaks. Skip style and naming nits.
+
+For EACH finding output exactly:
+- SEVERITY: critical | high | medium | low
+- FILE + locus (function or line)
+- PROBLEM: what goes wrong and the concrete scenario that triggers it
+- FIX: a concrete, minimal fix
+
+Be adversarial and specific. Only report issues you can justify from the actual code. If you believe the code is correct in some area, do not invent problems. End with a one-paragraph overall assessment.

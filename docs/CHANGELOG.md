@@ -1,0 +1,74 @@
+# Streif — Changelog
+
+> Хронологічний журнал змін: **що змінилось, коли, і ЧОМУ**. Призначення — легке стороннє
+> review (codex) і згадування, як і чому побудована кожна частина.
+> Канон **рішень** (повне обґрунтування) — `DECISIONS.md`. Операційний стан spike —
+> `spike/android-render/SPIKE-STATUS.md`. Дизайн-архітектура — `05-tech-architecture.md`.
+
+---
+
+## 2026-06-26 (вечір) — Spike-2: edge-матчинг (фікс «зарано» + «через дорогу»), D25
+
+**Матчинг центроїд → контур (edge-distance) + closest-approach** — заміна D5-радіуса, на основі польового присуду.
+- *Привід (дані):* 4 прогулянки → 2147 фіксів + 91 ручна ✓/✗-мітка. Денис: «деякі будинки фарбуються ще до того, як я дійшов» + «деякі через дорогу не фарбувались». `analyze.py` довів **один корінь — матчинг до ЦЕНТРОЇДА:** у момент розкриття GPS у медіані 12.7 м від стіни (19 м від центроїда = диск спрацьовує на межі R), 81% розкриттів >10 м від стіни, випередження медіана 11.2 м; а пропущені через дорогу мали стіну 14 м, але центроїд 25 м (>R). Видовжені будинки, повз які пройшов за 2-6 м, лишались сірими (центроїд в іншому кінці).
+- *Метод (D25):* (1) відстань GPS→**контур полігона** (point-to-ring, point-in-polygon→0), у локальній проєкції за широтою запиту (коректно по всій Норвегії); (2) **bbox-grid** — будинок індексується у ВСІ комірки, що накриває bbox (інакше великий будинок із далеким центроїдом випадає до edge-тесту — фікс із adversarial-рев'ю); (3) **R_FAR=18 м**; (4) **closest-approach gate** — розкрити коли edge виросла на SLACK=1.5 м над мінімумом (= проминув найближчу точку, йшов уздовж) АБО стіна ≤ MIN_EDGE=8 м (впритул).
+- *Чому closest-approach, а не abreast (курс):* 4 незалежні проєкти-агенти зійшлись на abreast, але **3 адверсивні скептики (всі holds:false)** його завернули — курс на 2-м базі шумний (P(похибка>75°)=36% за Монте-Карло), плюс баг кута від кінця сегмента (заявлені 80/83 неперевірені) + діра re-match на zone-load. closest-approach course-free, помиляється «пізніше» (як просив Денис), zone-load діру не має. Вибір зроблено проти консенсусу проєктувальників — саме на користь адверсивного шару.
+- *Replay-верифікація на тому ж треку (before field retest):* recall **69→76/83**, edge@reveal медіана **19.2→9.9 м**, 9/15 раніше-пропущених тепер ловляться, 3 видовжені «2-6 м» — усі ✓. Хибних 6→4. Юніт-тести: edge=0 всередині, через-дорогу-по-стіні-не-центроїду, grid-gather великого будинку, Oslo-широта.
+- *Залишок:* 6/15 пропусків — ширші вулиці (edge >18); важіль `R_FAR`→20 за нових даних (P2). НЕ чіпали: vehicle-gate, ACC_MAX, building_id.
+- *Файли:* `BuildingStore.kt` (геометрія кілець + bbox-grid + `candidatesPoint`/edge), `TrackingRepository.kt` (`matchAt` + `runMin` closest-approach + zone-load replay через gated-матчер), `MainActivity.kt` (radiusM 20→18). Інструмент аналізу: `spike/fieldtest/analyze.py`.
+
+---
+
+## 2026-06-26 — Spike-2: on-demand, мульти-сіті, статистика, vehicle-gate, іконка
+
+**On-demand area download** (D24, замінює S8) — головна зміна дня.
+- *Чому:* польовий тест (12 781 фікс) довів, що **фіксований бандл bbox не масштабується** під рух — розкривалось лише там, де я вгадав зону (Volda), бо Денис рухається регіоном ~300 км. Геокод сіл (2-км bbox) щоразу схибив.
+- *Як:* `BuildingStore` став **інкрементальним + thread-safe**; `AreaLoader` на кожному (gate-ok) фіксі гарантує, що тайл (~0.05°) навколо тебе завантажений: локальний кеш → інакше `OverpassAreaSource` (Overpass-запит + OSM-парсер на Kotlin) → `addFeatures`. `reconcilePersisted()` відновлює збережені розкриття, коли їхня зона довантажується.
+- *Джерело за інтерфейсом* (`AreaSource`): тест = Overpass (ODbL, нуль інфри, флакі — кешуємо зону раз). **⚠️ Перед релізом мігрувати на Pre-hosted CC-BY CDN** (надійність+масштаб+ліцензія) — D24/S8, P4. Запис у канон на прохання Дениса, щоб не забути.
+- *Валідовано на Pixel 9:* порожній старт → fetch Volda-тайла (3705 буд.) → тап Старт → розкрив будинок.
+
+**Інші зміни:**
+- **Камера на свіжий фікс** (`getCurrentLocation`, не `lastLocation`). *Чому:* `lastLocation` був застарілий — показувало Volda, коли Денис був у Oslo.
+- **Мульти-сіті бандл (стопгап, S8)** — проміжний крок до on-demand: bbox по реальних зонах із `diag.csv` (Hallingdal/Land/Oslo/Gardermoen). Замінений on-demand того ж дня.
+- **Vehicle/bike-gate (Stage B, D5)** — `ActivityGate` (Activity Recognition Transition API + швидкісний гістерезис) блокує розкриття в авто/велосипеді. *Польовий тест підтвердив:* на дорогах gate коректно блокував.
+- **Статистика (D13)** — `Stats`/`SessionStore`/`VisitStore` (тип+час): Coverage/Variety/Discovery, без score.
+- **Diagnostic-збір (D14)** — `DiagnosticRecorder` пише сирий трек у `diag.csv`. *Чому gated на `BuildConfig.DEBUG`:* release автоматично не збирає (структурно, не TODO) — на вимогу Дениса «не забути прибрати в публічній версії».
+- **Іконка** — placeholder «мапа новизни» (кольорові будинки в колі розкриття + маркер на фьорд-ночі). Фінал — із брендом (P1).
+- **Код-рев'ю Spike-2 Stage A:** Claude-адверсивний (30 агентів, 12 реальних багів) + **codex gpt-5.4** (3, з них 2 нові, яких Claude не побачив: init стирав live-стан, executor-leak). Усе виправлено. *Висновок:* крос-модельне review додає реальну цінність → стандарт на gate Spike-2→MVP-0 (D23).
+- **Код-рев'ю on-demand (codex gpt-5.4):** 4 реальні знахідки (усі підтверджено адверсивно) → виправлено: **C1** гонка даних — `BuildingStore` мутується у фоні, читався з main без локу → синхронізовані аксесори (`featureAt`/`idAt`/`indexOf`); **C2** async-зона не реплеїла пройдений шлях → буфер нещодавніх фіксів + replay у `onAreaLoaded`; **C3** старі bare-id ≠ on-demand `w<id>` → reconcile пробує `w$id` (відновило 14 «втрачених» розкриттів на пристрої!); **C4** новий `AreaLoader` на кожне пересоздання → переюз store+loader (без витоку executor).
+- **On-demand робастність (до польового тесту):** retry-backoff для невдалих зон (Overpass флакі — кулдаун 20с замість спаму щофікса; кеш після успіху назавжди); показ статусу зони на екрані («завантаження зони…» / «немає даних зони»), щоб видно було, що відбувається, а не «застосунок завис».
+- **Ground-truth маркування будинків (debug, на прохання Дениса):** на тесті тап по будинку → цикл мітки **✓ correct → ✗ wrong → знято**, одразу лог у `marks.csv` (`t,building_id,mark,lat,lon,wasRevealed`). *Навіщо:* точний ручний фідбек «розкрито правильно/хибно» для тюнінгу порогів матчингу (P2) — звіряти проти `diag.csv`. *Як:* `MarkLog` (append, DEBUG-gated) + кольорові `CircleLayer` мітки + напівпрозорий шар «усі завантажені будинки» (видно, що тапати). **Ідентифікація будинку — через наш `BuildingStore.nearest()` (spatial-index), НЕ `queryRenderedFeatures`** — render-query на пристрої повертав 0 (texture/timing-норов MapLibre); `nearest()` надійний у SurfaceView і texture. Валідовано на Pixel 9 (повний цикл + обидва режими).
+
+---
+
+## 2026-06-22 — Spike-1 v2 (рендер-перф присуд) — D22
+
+- *Питання:* чи двошаровий overlay тримає зростаючий visited-набір плавно. *Присуд (Pixel 9):* **~60 fps пану до 4000 visited**; async `setGeoJson`-латентність ≤~100 мс до 2000.
+- *Ключове, спростоване даними:* **sync (`withSynchronousUpdate(true)`) — погано** (≈2× латентність + колапс fps 60→5 при пан+апдеті) → дефолт **async** (D7 виправлено, S7).
+- *Інструмент:* власний MapLibre frame-listener (HWUI-tools SurfaceView не бачать — звірено з доками).
+- *Метод:* перф-режими bench/combo/replay (`PerfHarness`) + research-воркфлоу з адверсивною верифікацією проти доків MapLibre.
+
+## 2026-06-21 — Spike-1 v1 + Фаза-0
+
+- **Spike-1 v1 (D21):** MapLibre Native рендерить ~10.8k кольорових будинків Volda. PMTiles вантажити `pmtiles://file://` (`asset://` крешить); `.pmtiles` потребує `noCompress`; tiles — tippecanoe.
+- **Фаза-0 gate:** стороннє review + адверсивний тех-стек-пас → backend прибрано з MVP (CLI-пайплайн, D12); матчинг уточнено (D5); метрики 3-вимірні (D13). Канон рішень створено (`DECISIONS.md`).
+
+---
+
+## Архітектура as-built (Spike-2, Android `no.streif.spike`)
+
+| Компонент | Відповідальність | Ключові рішення |
+|---|---|---|
+| `MainActivity` | UI (карта+кнопка+статус), режими walk/perf, дозволи, камера, wiring | D7 (native MapView), C1 (no re-init live-сесії) |
+| `WalkTrackingService` | FGS `type=location`, реєстрація Fused + Activity Recognition | foreground-only (без BACKGROUND_LOCATION), START_NOT_STICKY |
+| `LocationProvider`/`FusedLocationProvider` | джерело GPS за інтерфейсом (no-GMS-шлях лишено) | Fused, ~2с інтервал |
+| `TrackingRepository` (singleton) | ядро: gate→матчинг→reveal→збереження→статка; міст service↔Activity | **D25** (`matchAt` edge + closest-approach `runMin`), accuracy fail-closed, скид якоря/runMin на межах сесії |
+| `ActivityGate` | vehicle/bike-фільтр (AR + швидкісний гістерезис) | D5, консервативно (dwell) |
+| `BuildingStore` | in-memory bbox-grid, інкрементальний+thread-safe, **edge-матч** (`candidatesPoint`) | **D25** (контур, не центроїд), D24, локальна проєкція за широтою запиту |
+| `AreaLoader`+`AreaCache`+`AreaSource`/`OverpassAreaSource` | on-demand завантаження зон + кеш + парс OSM | **D24** (джерело за інтерфейсом → CC-BY CDN пізніше) |
+| `VisitStore`/`SessionStore`/`Stats` | збереження розкриттів (id,тип,час) + сесій + метрики | D13 (Coverage/Variety/Discovery), D11 (Room — на MVP-0) |
+| `DiagnosticRecorder` | сирий трек для тюнінгу (CSV) | **D14, gated `BuildConfig.DEBUG`** |
+| `MarkLog` + тап-обробник | ground-truth мітки ✓/✗ розкриття (CSV) для тюнінгу матчингу | **gated `BuildConfig.DEBUG`**; ідентифікація через `BuildingStore.nearest()`, не render-query |
+| `PerfProbe`/`PerfHarness` | перф-інструментація (frame-listener) + bench/combo/replay | D22 (HWUI не бачить SurfaceView) |
+
+> Дані будинків: тест = Overpass on-demand (ODbL). Продакшн = CC-BY (INSPIRE+Matrikkelen) на CDN — **міграція обов'язкова (D24/S8/P4)**.
