@@ -438,8 +438,93 @@ print(f"  -> recall {69}→{rec} (+{rec-69}) | edge@reveal 19.2→{pct(eds,50):.
 missed_ids = [m["id"] for m in final_mark.values() if m["mark"]=="wrong" and not m["was"]]
 now_caught = sum(1 for p in missed_ids if p in rv)
 print(f"  раніше-пропущені (✗ не розкриті): {now_caught}/{len(missed_ids)} тепер ловляться")
-# спец-кейс: 2 видовжені будинки, повз які пройшов за 2-6 м
+# спец-кейс: видовжені будинки старого треку (можуть бути відсутні в цій зоні)
 for pid in ("w632007457", "w909011994", "w986947820"):
-    if pid in buildings:
-        ce = min_edge.get(pid,(None,0))[0]
-        print(f"    {pid} (стіна {ce:.0f}м, центроїд далеко): {'РОЗКРИТО ✓' if pid in rv else 'НЕ розкрито ✗'}")
+    me = min_edge.get(pid)
+    if pid in buildings and me is not None:
+        print(f"    {pid} (стіна {me[0]:.0f}м): {'РОЗКРИТО ✓' if pid in rv else 'НЕ розкрито ✗'}")
+
+print("\n================ 12. РЕФАЙН: CENTROID-closest-approach (тайминг = середина) ================")
+# min centroid-дист треку до кожного near-будинку (для «наскільки розкриття = abreast середини»)
+min_cen = {}
+for r in track:
+    for pid in near_ids(r["lon"], r["lat"], 60.0):
+        cd = d_centroid(r["lon"], r["lat"], buildings[pid])
+        if pid not in min_cen or cd < min_cen[pid]: min_cen[pid] = cd
+
+should2 = set(m["id"] for m in final_mark.values()
+              if (m["mark"]=="correct" and m["was"]) or (m["mark"]=="wrong" and not m["was"]))
+shouldnot2 = set(m["id"] for m in final_mark.values() if m["mark"]=="wrong" and m["was"])
+R_FAR = 18.0
+
+def sim_cca(slack_c, edge_bypass):
+    runmin = {}; rev = {}; red = {}; rcd = {}
+    for r in track:
+        if r["acc"] > ACC_MAX or r["note"] != "ok": continue
+        for pid in near_ids(r["lon"], r["lat"], R_FAR + 5):
+            ins, ed = inside_edge(r["lon"], r["lat"], buildings[pid])
+            if ed > R_FAR and not ins: continue          # eligibility — стіна ≤ R_FAR
+            cd = d_centroid(r["lon"], r["lat"], buildings[pid])
+            prior = runmin.get(pid)
+            runmin[pid] = cd if prior is None else min(prior, cd)
+            if pid in rev: continue
+            passed = prior is not None and cd > prior + slack_c
+            if ins or (edge_bypass > 0 and ed <= edge_bypass) or passed:
+                rev[pid] = r["t"]; red[pid] = ed; rcd[pid] = cd
+    return set(rev), red, rcd
+
+print(f"  {'варіант':34s} {'recall':>7s} {'хибн':>5s} {'edge@rev':>9s} {'past-середини (cd-min)':>22s}")
+print(f"  {'-- ПОТОЧНА (edge-CA + MIN_EDGE=8)':34s}  (секція 11: edge@rev med 7.9, 55/81 до підходу)")
+for slack_c, eb, name in [(2.0,0.0,"centroid-CA, inside-only"),
+                          (2.0,3.0,"centroid-CA + edge≤3 байпас"),
+                          (2.5,3.0,"centroid-CA s=2.5 + edge≤3"),
+                          (1.5,4.0,"centroid-CA s=1.5 + edge≤4")]:
+    rv, red, rcd = sim_cca(slack_c, eb)
+    rec = len(rv & should2); fp = len(rv & shouldnot2)
+    eds = [red[p] for p in rv]
+    # «наскільки повз середину»: centroid@reveal − min_centroid (0 = рівно abreast середини)
+    past = [rcd[p] - min_cen.get(p, rcd[p]) for p in rv if p in min_cen]
+    print(f"  {name:34s} {rec:3d}/{len(should2):<3d} {fp:4d}/{len(shouldnot2):<2d} {pct(eds,50):5.1f}/{pct(eds,90):<4.1f} {pct(past,50):6.1f}/{pct(past,90):<5.1f} м")
+print("  (past-середини: 0 = розкрито рівно навпроти центру; великий = пізно; від'ємний неможливий)")
+
+print("\n================ 13. ВЕРИФІКАЦІЯ D25.1 (точна впроваджена логіка) ================")
+R_FAR_I, MIN_EDGE_NEAR, SLACK_CEN, MIN_MOVE = 18.0, 3.0, 2.0, 2.0
+def replay_d251():
+    runmin = {}; rev = {}; red = {}; rcd = {}
+    prev = None
+    for r in track:
+        if r["acc"] > ACC_MAX or r["note"] != "ok":
+            continue
+        if prev is None:
+            moved = True
+        else:
+            kl = klon(prev["lat"]); dd = math.hypot((r["lon"]-prev["lon"])*kl, (r["lat"]-prev["lat"])*KLAT)
+            moved = dd >= MIN_MOVE
+        prev = r
+        for pid in near_ids(r["lon"], r["lat"], R_FAR_I + 5):
+            ins, ed = inside_edge(r["lon"], r["lat"], buildings[pid])
+            if ed > R_FAR_I and not ins:
+                continue                                  # eligibility — стіна ≤ R_FAR
+            cd = d_centroid(r["lon"], r["lat"], buildings[pid])
+            prior = runmin.get(pid)
+            runmin[pid] = cd if prior is None else min(prior, cd)
+            if pid in rev:
+                continue
+            near_wall = ed <= MIN_EDGE_NEAR
+            passed_middle = moved and prior is not None and cd > prior + SLACK_CEN
+            if near_wall or passed_middle:
+                rev[pid] = r["t"]; red[pid] = ed; rcd[pid] = cd
+    return set(rev), red, rcd
+
+rv, red, rcd = replay_d251()
+rec = len(rv & should2); fp = len(rv & shouldnot2)
+eds = [red[p] for p in rv]
+past = [rcd[p] - min_cen.get(p, rcd[p]) for p in rv if p in min_cen]
+at_middle = sum(1 for p in past if p <= 5.0)  # розкрито в межах 5 м від центру
+print(f"  розкрито {len(rv)} буд. | recall {rec}/{len(should2)} | хибних {fp}/{len(shouldnot2)}")
+print(f"  PAST-СЕРЕДИНИ (cd@reveal − min): медіана {pct(past,50):.1f} м, p90 {pct(past,90):.1f} м  (0 = рівно навпроти центру)")
+print(f"  розкрито в межах 5 м від центру: {at_middle}/{len(past)} ({100*at_middle//max(1,len(past))}%)")
+print(f"  edge@reveal: медіана {pct(eds,50):.1f} м")
+print(f"  ПОРІВНЯННЯ тайминга:")
+print(f"    D25 (edge-CA+MIN_EDGE=8):  edge@reveal 7.9 м, розкриття на ПЕРЕДНЬОМУ куті, 55/81 до підходу")
+print(f"    D25.1 (centroid-CA):       розкриття ~{pct(past,50):.1f} м ВІД ЦЕНТРУ → «по середині» ✓")

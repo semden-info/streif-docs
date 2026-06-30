@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-06-27 — Польовий ретест D25 → рефайн тайминга D25.1 (centroid-closest-approach)
+
+**Тайминг матчингу: edge-closest-approach → CENTROID-closest-approach** — рефайн D25 за польовим ретестом.
+- *Привід (дані):* нова прогулянка (чистий on-demand після `pm clear`) → 1563 фікси + 66 ✓/✗-міток, GPS медіана 4.8 м. D25 покращав тайминг (edge@reveal 12.7→7.9 м), але Денис: «деякі ще фарбуються до того, як дійшов; ідеал — **приблизно по середині, коли йдеш уздовж**». `analyze.py` (секція 12/13) знайшов корінь: **`MIN_EDGE=8` спрацьовує на ПЕРЕДНЬОМУ куті** будинку (як тільки за 8 м від найближчої стіни = на початку).
+- *Метод (D25.1):* **eligibility** лишається edge ≤ R_FAR=18 (через дорогу/видовжені ловляться), а **тайминг** тепер по closest-approach до **ЦЕНТРОЇДА** (`runMin` зберігає центроїд-дист; розкрити коли виросла на **SLACK_CEN=2 м** над мінімумом = проминув середину) + малий байпас **MIN_EDGE_NEAR=3 м**/всередині замість MIN_EDGE=8 + **`moved`-guard** (тайминг-розкриття лише на русі ≥MIN_MOVE — проти GPS-джитера на місці). Центроїд лежить у центрі будинку, тож «проминув центроїд» = «навпроти середини».
+- *Replay-верифікація на тому ж треку:* розкриття лягає медіана **3.3 м від центру** (79% у межах 5 м від центру) проти переднього кута D25; recall 61→**56/61** (ціна: будинки, повз середину яких не пройшов — завернув/зупинився), хибних 4→3. Юніт-тести зелені (+ centroid-вихід `candidatesPoint`).
+- *Дані-артефакт (не баг):* розкрився будинок, якого фізично немає — **застарілий OSM-footprint** (знесений). Лікується продакшн-CC-BY + періодичним refresh + ✗-маркуванням; не матчинг.
+- *Тунабельне (P2):* `SLACK_CEN`/`MIN_EDGE_NEAR`. *Батарея* знову зіпсована (гуляв з повербанком) — Stage C чекає чистого виходу.
+- *Файли:* `BuildingStore.kt` (`candidatesPoint` тепер віддає й центроїд-дист), `TrackingRepository.kt` (`matchAt` → centroid-CA + `moved`-guard; константи MIN_EDGE_NEAR=3/SLACK_CEN=2), `BuildingStoreTest.kt`.
+
+---
+
 ## 2026-06-27 — Конкурентний аналіз, рішення D26–D30, git + зведення майстер-файлів
 
 **Конкурентний аналіз (планування, без коду).** Багатоагентне дослідження 20 застосунків-аналогів (reveal-the-map / completion / територія / дослідження + норвезькі: DNT/UT, StikkUT, Stolpejakten, Trimpoeng, Fjelltoppjakten, Peakbook, Norgeskart, World Uncovered, Walksy) — механіки + свіжі відгуки.
@@ -83,9 +95,9 @@
 | `MainActivity` | UI (карта+кнопка+статус), режими walk/perf, дозволи, камера, wiring | D7 (native MapView), C1 (no re-init live-сесії) |
 | `WalkTrackingService` | FGS `type=location`, реєстрація Fused + Activity Recognition | foreground-only (без BACKGROUND_LOCATION), START_NOT_STICKY |
 | `LocationProvider`/`FusedLocationProvider` | джерело GPS за інтерфейсом (no-GMS-шлях лишено) | Fused, ~2с інтервал |
-| `TrackingRepository` (singleton) | ядро: gate→матчинг→reveal→збереження→статка; міст service↔Activity | **D25** (`matchAt` edge + closest-approach `runMin`), accuracy fail-closed, скид якоря/runMin на межах сесії |
+| `TrackingRepository` (singleton) | ядро: gate→матчинг→reveal→збереження→статка; міст service↔Activity | **D25.1** (`matchAt`: edge-eligibility + **centroid**-closest-approach `runMin` + `moved`-guard), accuracy fail-closed, скид якоря/runMin на межах сесії |
 | `ActivityGate` | vehicle/bike-фільтр (AR + швидкісний гістерезис) | D5, консервативно (dwell) |
-| `BuildingStore` | in-memory bbox-grid, інкрементальний+thread-safe, **edge-матч** (`candidatesPoint`) | **D25** (контур, не центроїд), D24, локальна проєкція за широтою запиту |
+| `BuildingStore` | in-memory bbox-grid, інкрементальний+thread-safe, **edge+centroid** (`candidatesPoint`) | **D25/D25.1** (edge-eligibility до контуру + центроїд-дист для тайминга), D24, локальна проєкція за широтою запиту |
 | `AreaLoader`+`AreaCache`+`AreaSource`/`OverpassAreaSource` | on-demand завантаження зон + кеш + парс OSM | **D24** (джерело за інтерфейсом → CC-BY CDN пізніше) |
 | `VisitStore`/`SessionStore`/`Stats` | збереження розкриттів (id,тип,час) + сесій + метрики | D13 (Coverage/Variety/Discovery), D11 (Room — на MVP-0) |
 | `DiagnosticRecorder` | сирий трек для тюнінгу (CSV) | **D14, gated `BuildConfig.DEBUG`** |
