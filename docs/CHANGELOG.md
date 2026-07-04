@@ -29,6 +29,14 @@
 - *Spike-шорткати (→ MVP-0-полір):* `allowMainThreadQueries` (обсяг записів мізерний, jank нехтовний); класичний Room-драйвер — BundledSQLiteDriver (D11) + винесення на IO-dispatcher відкладено.
 - *Файли:* `MvpDatabase.kt` (нове: entities+DAO+DB+importer), `TrackingRepository.kt` (visitDao/sessionDao замість VisitStore/SessionStore + session-checkpoint), `MainActivity.kt` (wiring), `build.gradle.kts`/`libs.versions.toml`/`gradle.properties` (KSP+Room). `VisitStore` лишився (importer-load + DEBUG-дубль); `SessionStore` більше не використовується.
 
+**MVP-0 — D6 eligibility («доступний з пішої мережі») реалізовано + verified.**
+- *Механіка:* `AreaSource` тепер тягне ще й OSM `highway` (пішу мережу) поряд із будинками → рахує прапорець `accessible` на кожен будинок (контур ≤ буфера **28 м** від пішохідної дороги; grid-індекс сегментів, локальна проєкція). `matchAt` розкриває **лише accessible**. Fail-open: якщо мережі нема — усі accessible (не блокуємо reveal). Seed/perf-режими без прапорця → accessible=true.
+- *WALKABLE:* footway/pedestrian/path/steps/residential/living_street/service/unclassified/track/cycleway/tertiary (motorway/trunk/primary самі по собі — не піша мережа).
+- *Верифікація (польова `d6verify.py` + пристрій):* Volda-тайл live → **accessible 3453/3705 (93%)**; на польових даних **112/112 should-розкриттів лишились accessible** (нуль хибних негативів — жодного правильного будинку не відсічено), відсіяно ~8% недосяжних.
+- *⚠️ Чесне обмеження:* D6 (проста версія) **НЕ рятує «через дорогу»** — 5/5 should-not (across-street) лишились accessible (вони в межах 28 м від дороги, якою ти йшов). Це не про досяжність, а про «мій бік vs протилежний бік» → **fast-follow** (як каже лок D6). Той +1 хибний reveal з фіксу #4 D6 НЕ прибирає.
+- *Клієнтський розрахунок* (dogfood на OSM/ODbL); продакшн — на сервері в CC-BY-пайплайні (лок D6).
+- *Файли:* `AreaSource.kt` (highway-fetch + `tagAccessible` + grid), `BuildingStore.kt` (`accessible`-масив + `isAccessible`), `TrackingRepository.kt` (гейт у `matchAt`).
+
 ---
 
 ## 2026-07-01 — Польова прогулянка (Ristevegen 1) + незалежне review D23 + 3 фікси
