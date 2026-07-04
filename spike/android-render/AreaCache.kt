@@ -28,5 +28,6 @@ class AreaCache(private val dir: File) {
         try { File(dir, "$key.geojson").writeText(FeatureCollection.fromFeatures(feats).toJson()) } catch (e: Exception) {}
     }
 
-    companion object { const val TILE = 0.05 }   // ~5.5 км lat / ~2.8 км lon @60° N
+    // 0.05→0.02 (P): дрібніші тайли = швидший cold-load стартового тайла + працює префетч-наперед
+    companion object { const val TILE = 0.02 }   // ~2.2 км lat / ~1.0 км lon @62° N
 }

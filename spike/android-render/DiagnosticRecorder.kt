@@ -1,6 +1,7 @@
 package no.streif.spike
 
 import android.location.Location
+import android.os.BatteryManager
 import java.io.File
 import java.util.concurrent.Executors
 
@@ -11,15 +12,18 @@ import java.util.concurrent.Executors
  * (див. MainActivity) → у release-білді збір автоматично вимкнено (забути неможливо). Дані
  * лежать ЛОКАЛЬНО (D14: сирий GPS не залишає пристрій), ручне видалення; у релізі — налаштування.
  *
- * CSV: t(epoch ms),lat,lon,accuracy(m),speed(m/s),matchedThisFix,revealedTotal,note(gate-стан)
+ * CSV: t(epoch ms),lat,lon,accuracy(m),speed(m/s),matchedThisFix,revealedTotal,note,battPct,chargeUah
+ * battPct/chargeUah — для Stage C (battery-gate) прямо з логу: %/год і mAh-розряд без adb-координації.
  */
-class DiagnosticRecorder(private val file: File) {
+class DiagnosticRecorder(private val file: File, private val battery: BatteryManager?) {
 
     fun log(loc: Location, matchedThisFix: Int, revealedTotal: Int, note: String) {
         val acc = if (loc.hasAccuracy()) loc.accuracy else -1f
         val spd = if (loc.hasSpeed()) loc.speed else -1f
         val n = note.ifEmpty { "ok" }
-        val line = "${loc.time},${loc.latitude},${loc.longitude},$acc,$spd,$matchedThisFix,$revealedTotal,$n\n"
+        val pct = battery?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
+        val uah = battery?.getLongProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER) ?: -1L
+        val line = "${loc.time},${loc.latitude},${loc.longitude},$acc,$spd,$matchedThisFix,$revealedTotal,$n,$pct,$uah\n"
         val f = file
         IO.execute { f.appendText(line) }
     }

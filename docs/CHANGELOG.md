@@ -7,6 +7,37 @@
 
 ---
 
+## 2026-07-04 — CC-BY продакшн-дані ЖИВІ: Варіант-1 пайплайн (OSM+Matrikkelen) → Cloudflare R2 (D31 realized)
+
+**Найбільша віха: тестові Overpass-дані замінено офіційним CC-BY-пайплайном, тайли живі на CDN.** Реалізує D31 (обрано Варіант 1: OSM-геометрія ODbL + Matrikkelen-збагачення).
+
+**Крок 0.1 — верифікація join (головний ризик Варіанту 1) ✅.** Спайк point-in-polygon (Matrikkelen `representasjonspunkt` → OSM-полігон): Volda **98.5%** будинків збагачено `bygningsnummer`+тип; лише 14 полігонів з >1 точкою. Ørsta нижче (**84%**) — бо OSM має БІЛЬШЕ об'єктів (11833) ніж Matrikkelen (10435) → стеля join 88%; решта лишає OSM-тип-фолбек. Не баг.
+- *Розкладка типів (офіційна Matrikkelen `bygningstype` → 6 категорій Streif):* **outbuilding 50%** (гаражі/naust/fjøs — половина всіх «будинків»!), housing 34%, hytte 11%, public 3%, other 2%, sacral 0.2%. Мапінг кодів: 161-172→hytte, 181-183/231-249/431-449→outbuilding, 671-679→sacral (66x — то культура/diskotek, НЕ церкви), решта 1xx→housing, 3xx-8xx→public, 2xx→other. **⚠️ Продуктове питання (відкрите):** чи розкривати гаражі нарівні з житлом — рішення відкладено до польових цифр (P10/retention).
+
+**Пайплайн `spike/pipeline/` (offline CLI):**
+- `fetch_osm.py` — OSM будинки+дороги per-kommune (Overpass area-query по `ref`; ~12k буд./kommune, ~17 MB JSON).
+- `build_tiles.py` — Matrikkelen GML (пряме Geonorge-завантаження, EPSG:25833→4326 pyproj) + OSM → point-in-polygon join → D6-`accessible` (той самий highway-buffer-алгоритм що в Kotlin) → тайли `area_{la}_{lo}.geojson` (сітка 0.02°, id=`m<bygningsnummer>` | фолбек `w<osmid>`; props building_id/type/accessible). Мульти-kommune → union на межі.
+- `upload_r2.py` — boto3 S3-API заливка на R2 з правильними заголовками.
+- *Джерело Matrikkelen:* прямий per-kommune URL `nedlasting.geonorge.no/.../Basisdata_{nr}_{Name}_25833_MatrikkelenBygning_GML.zip` (Ø→O транслітерація в назві). Order-flow API таймаутив — прямий URL працює.
+
+**Результат: Volda+Ørsta = 416 тайлів, 8.2 MB → 2.2 MB gzip.** 91% з офіційним `bygningsnummer`, D6-accessible 83%.
+
+**Хостинг = Cloudflare R2 (D31 (2) resolved), верифіковано адверсивним воркфлоу** (6 research-агентів + synth + 3 скептики cost/prod/correctness, веб-джерела Cloudflare docs):
+- **R2, не Pages:** Pages має стелю 20k файлів (впремося на нац.масштабі); R2 — без ліміту об'єктів + object-store-семантика (перезалити частину тайлів).
+- **$0:** лімітує читання 10M/міс (юзаємо ~0.09%), egress безкоштовний, сховище 10 GB. Storage class = **Standard** (Infrequent Access НЕ в free-tier + retrieval fee).
+- **Знахідка correctness-скептика:** R2 **сам не стискає** (авто-стиснення Cloudflare — лише на custom-domain) → тайли **передстиснено gzip** (57 KB найбільший замість 330). Android розпаковує прозоро.
+- **Live:** `https://pub-b1c9ae365792405880b62e24ccda0df1.r2.dev/area_{la}_{lo}.geojson`. Заголовки перевірено end-to-end (200, Content-Encoding: gzip, 970 фіч розпакувалось, неіснуючий тайл→404).
+
+**Android-споживач (`CdnGeoJsonAreaSource.kt` + `BuildConfig`):**
+- Реалізує `AreaSource`: ключ тайла = `AreaCache.keyFor` (0.02°) → GET `$CDN_BASE_URL/area_{la}_{lo}.geojson` → parse. Фічі вже несуть building_id/type/accessible (нуль runtime-збагачення).
+- Витримує 3 gzip-пастки (перевірено проти скептика): `responseCode` ДО `inputStream` (404→emptyList, не FileNotFoundException); `readText()` до EOF (не `getContentLength()`, яке gzip обнуляє); `Accept-Encoding` не чіпаю (прозора розпаковка).
+- Перемикач: `BuildConfig.USE_CDN`=true + `CDN_BASE_URL`=r2.dev-URL. `false` → runtime-Overpass (dogfood-фолбек). `MainActivity` вибирає джерело. Зібрано+увімкнено (APK ✅), встановлення чекає під'єднання Pixel 9.
+- *Файли:* `CdnGeoJsonAreaSource.kt` (нове), `build.gradle.kts` (buildConfigField USE_CDN/CDN_BASE_URL), `MainActivity.kt` (вибір джерела), `AreaCache.kt`/`AreaLoader.kt` (тайл 0.02°/fetch-halfKm 1.4 — раніше).
+
+**TODO продакшн (не блокує польовий тест):** eligibility на Elveg (зараз accessible з OSM-highway у тайлах); custom-domain `tiles.streif.no` перед зовнішнім тестером → вимкнути r2.dev; міграція на pre-hosted FKB через публічного партнера (D31); токен R2 з чату — відкликати.
+
+---
+
 ## 2026-07-04 — Лок рішень перед MVP-0 (D6, D30) + матчинг-фікси #4/#5
 
 **Ухвалено 2 рішення (Денис погодив рекомендації), лок у DECISIONS:**

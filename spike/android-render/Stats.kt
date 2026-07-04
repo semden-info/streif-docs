@@ -2,7 +2,7 @@ package no.streif.spike
 
 /**
  * Spike-2 — знімок статистики для UI/майбутніх рейтингів. Лягає в три виміри D13:
- *  • Coverage — `coveragePct` (розкрито / усього будинків регіону);
+ *  • Coverage — `coveragePct` (розкрито / досяжних будинків D6);
  *  • Variety  — `byType` (розбивка за типами);
  *  • Discovery — `sessionNew` / `sessionDistanceM` (нове за поточний маршрут).
  * Без єдиного score (D13). Серверні рейтинги — v2 (потребують auth+бекенд, P5).

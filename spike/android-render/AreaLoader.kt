@@ -39,7 +39,7 @@ class AreaLoader(
         io.execute {
             val cached = cache.load(key)
             status = "завантаження зони…"
-            val feats = cached ?: source.fetch(cLat, cLon, 3.0)?.also { cache.save(key, it) }
+            val feats = cached ?: source.fetch(cLat, cLon, 1.4)?.also { cache.save(key, it) }   // P: fetch-бокс під дрібніший тайл (0.02°) — швидше
             if (feats != null) {
                 val n = store.addFeatures(feats)
                 loaded.add(key); failedUntil.remove(key)
