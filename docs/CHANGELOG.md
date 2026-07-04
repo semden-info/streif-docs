@@ -7,6 +7,30 @@
 
 ---
 
+## 2026-07-04 — Лок рішень перед MVP-0 (D6, D30) + матчинг-фікси #4/#5
+
+**Ухвалено 2 рішення (Денис погодив рекомендації), лок у DECISIONS:**
+- **D30 — продакшн `building_id` = Matrikkelen `bygningsnummer`** (не OSM `w<wayId>`). Причина: OSM-id не переживе Overpass→CC-BY (осиротіли б усі розкриття). Overpass-era dogfood-розкриття = одноразові (або опц. spatial-remap історії Дениса); Room несе колонку `source`. Геометричний хеш відхилено (OSM≠Matrikkelen-контур → зсув+колізії).
+- **D6 — eligibility: джерело = OSM `highway`** (footway/residential/path…; НЕ turrutebasen — то природний шар), **буфер ~25–30 м**, прапорець `eligible` рахувати на сервері (build-time). «Мій бік vs через дорогу» → fast-follow. Ліцензія OSM(ODbL) для build-time булевого — підтвердити при міграції (P4).
+
+**Матчинг-фікси з D23-review (`TrackingRepository.kt`, assembleDebug ✅):**
+- **#4 тангенційний промах** — розчеплено вікно eligibility (стіна ≤`R_FAR`=18) від вікна тайминга: кандидатів для centroid-CA беремо ширше (`R_TRACK`=30), а `passedMiddle` розкриває лише будинки, чия стіна колись була ≤`R_FAR` (`eligible`-сет). Тепер дотичний прохід на 15–18 м не випадає з кандидатів до підтвердження.
+- **#5 cold-start буфер** — replay-буфер тепер за ЧАСОМ (`RECENT_WINDOW_MS`=90с, cap 240), не фіксовані 12 фіксів → повільний Overpass-fetch (>24с) більше не губить ранні будинки.
+- **+ replay-коректність:** реальний `moved` з послідовних фіксів (не `i>0` — прибирає джитер-розкриття стоячи, codex #2); replay не біжить після Stop (`isTracking`-guard) + чистка буфера в `endSession` (codex #3).
+- *Верифікація (replay на польових даних, `analyze.py` секція 14):* recall **101→110/112**, хибних 4→5 (+1 — «через дорогу», лікує D6), тайминг «по середині» збережено (past-середини 3.2→3.3 м). Ristevegen 1 тепер розкривається на **1-му** дотичному проході (edge 19.3 м) замість 2-го (edge 1.1 м, +16 хв).
+- *Далі:* чиста повторна прогулянка (без кабелю → заразом Stage C) підтвердить live-поведінку (cold-start recovery) + дасть чисті ✓/✗-мітки для фіналізації `R_TRACK`/`R_FAR` (P2).
+
+**MVP-0 старт — Room-персистенція (D11) замінює flat-файли** (`MvpDatabase`, KSP; verified на пристрої):
+- *Схема:* `visits(buildingId PK, type, firstSeenTs, source)` + `sessions(id, startTs, endTs, distanceM, newCount)`. Колонка `source` (D30): dogfood="osm", продакшн="matrikkelen" — простір імен для міграції Overpass→CC-BY.
+- *Збірка:* KSP `2.2.10-2.0.2` (під Kotlin 2.2.10, що його тягне AGP) + Room `2.8.4`. **Гальмо AGP 9.2.1:** вбудований Kotlin відхиляє KSP-source-set → потрібен `android.disallowKotlinSourceSets=false` у `gradle.properties` (інакше build fail «Kotlin source set contains build/generated/ksp»).
+- *Importer:* одноразова міграція `visited.txt` → Room (`MvpImporter`). **Верифіковано на Pixel 9: 132 dogfood-розкриття мігрували (усі source="osm"), БД створюється, запуск без креша, reconcile відновлює розкриття з Room.**
+- *D23 #11 (втрата сесії) виправлено:* сесія `insert` на старті → checkpoint (на reveal + кожні ~15 фіксів) → update/delete на Stop. Краш/OOM посеред прогулянки більше не губить усю сесію (раніше `sessions.csv` писався лише на штатний Stop).
+- *DEBUG-дубль:* у debug розкриття далі пишуться й у `visited.txt` — щоб `analyze.py` (польовий аналіз під час тюнінгу) не зламався. Release — тільки Room.
+- *Spike-шорткати (→ MVP-0-полір):* `allowMainThreadQueries` (обсяг записів мізерний, jank нехтовний); класичний Room-драйвер — BundledSQLiteDriver (D11) + винесення на IO-dispatcher відкладено.
+- *Файли:* `MvpDatabase.kt` (нове: entities+DAO+DB+importer), `TrackingRepository.kt` (visitDao/sessionDao замість VisitStore/SessionStore + session-checkpoint), `MainActivity.kt` (wiring), `build.gradle.kts`/`libs.versions.toml`/`gradle.properties` (KSP+Room). `VisitStore` лишився (importer-load + DEBUG-дубль); `SessionStore` більше не використовується.
+
+---
+
 ## 2026-07-01 — Польова прогулянка (Ristevegen 1) + незалежне review D23 + 3 фікси
 
 **Польовий аналіз (прогулянка ~26 хв, 780 фіксів, телефон підключено → батарея не міряна).** D25.1 у цілому тримається (replay-recall 101/112, розкриття медіана 3.2 м від центру, 77% ≤5 м).

@@ -528,3 +528,48 @@ print(f"  edge@reveal: медіана {pct(eds,50):.1f} м")
 print(f"  ПОРІВНЯННЯ тайминга:")
 print(f"    D25 (edge-CA+MIN_EDGE=8):  edge@reveal 7.9 м, розкриття на ПЕРЕДНЬОМУ куті, 55/81 до підходу")
 print(f"    D25.1 (centroid-CA):       розкриття ~{pct(past,50):.1f} м ВІД ЦЕНТРУ → «по середині» ✓")
+
+print("\n================ 14. ВЕРИФІКАЦІЯ ФІКСУ D23 #4 (R_TRACK=30 + eligibility) ================")
+# Точна НОВА логіка matchAt: кандидати в межах R_TRACK=30; eligible = стіна КОЛИСЬ ≤ R_FAR=18;
+# passedMiddle (centroid-CA) розкриває ЛИШЕ eligible → дотичний прохід (edge 15-18, проминув середину
+# уже за межами 18 м) тепер ловиться, бо будинок лишається кандидатом до 30 м.
+R_TRACK_I = 30.0
+def replay_d252():
+    runmin = {}; elig = set(); rev = {}; red = {}; rcd = {}
+    prev = None
+    for r in track:
+        if r["acc"] > ACC_MAX or r["note"] != "ok":
+            continue
+        if prev is None:
+            moved = True
+        else:
+            kl = klon(prev["lat"]); dd = math.hypot((r["lon"]-prev["lon"])*kl, (r["lat"]-prev["lat"])*KLAT)
+            moved = dd >= MIN_MOVE
+        prev = r
+        for pid in near_ids(r["lon"], r["lat"], R_TRACK_I + 5):
+            ins, ed = inside_edge(r["lon"], r["lat"], buildings[pid])
+            if ed > R_TRACK_I and not ins:
+                continue                                   # кандидат-вікно = R_TRACK
+            cd = d_centroid(r["lon"], r["lat"], buildings[pid])
+            prior = runmin.get(pid)
+            runmin[pid] = cd if prior is None else min(prior, cd)
+            if ed <= R_FAR_I:
+                elig.add(pid)                              # стіна колись ≤ R_FAR → eligible
+            if pid in rev:
+                continue
+            near_wall = ed <= MIN_EDGE_NEAR
+            passed = moved and prior is not None and cd > prior + SLACK_CEN and pid in elig
+            if near_wall or passed:
+                rev[pid] = r["t"]; red[pid] = ed; rcd[pid] = cd
+    return set(rev), red, rcd
+
+rv2, red2, rcd2 = replay_d252()
+rec2 = len(rv2 & should2); fp2 = len(rv2 & shouldnot2)
+eds2 = [red2[p] for p in rv2]
+past2 = [rcd2[p] - min_cen.get(p, rcd2[p]) for p in rv2 if p in min_cen]
+rv1, red1, rcd1 = replay_d251()   # стара D25.1 для порівняння
+print(f"  D25.1 (стара):  розкрито {len(rv1):3d} | recall {len(rv1 & should2)}/{len(should2)} | хибних {len(rv1 & shouldnot2)}/{len(shouldnot2)} | Ristevegen 1 {'✓' if 'w396301435' in rv1 else '✗ ПРОПУЩЕНО'}")
+print(f"  D23 #4 (нова):  розкрито {len(rv2):3d} | recall {rec2}/{len(should2)} | хибних {fp2}/{len(shouldnot2)} | Ristevegen 1 {'✓ РОЗКРИТО' if 'w396301435' in rv2 else '✗'}" + (f" @ edge {red2['w396301435']:.1f}м" if 'w396301435' in rv2 else ""))
+print(f"  edge@reveal: медіана {pct(eds2,50):.1f} м | past-середини медіана {pct(past2,50):.1f} м (тайминг «по середині» збережено)")
+gained = rv2 - rv1
+print(f"  нових розкриттів проти D25.1: {len(gained)} (з них should={len(gained & should2)}, should-not={len(gained & shouldnot2)})")
