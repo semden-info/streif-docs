@@ -44,6 +44,36 @@ PUBLIC_TOUR = {"hotel","hostel","guest_house"}
 HYTTE_TOUR = {"chalet","alpine_hut","wilderness_hut"}
 WALKABLE = {"footway","pedestrian","path","steps","residential","living_street","service","unclassified","track","cycleway","tertiary"}
 
+# ---------- Kartverket Elveg 2.0 / NVDB Vegnett Pluss (D31): walkable-мережа для D6 ----------
+# typeVeg-літерали — з ЖИВОГО файлу Volda (не зі специфікації, де enkelBilveg/gangOgSykkelveg).
+NVDB = "{https://skjema.geonorge.no/SOSI/produktspesifikasjon/NVDBVegnettPluss/1.1}"
+ELVEG_PED = {"fortau","gangveg","gsv","gangfelt","trapp"}      # пішохідна інфра — завжди walkable
+ELVEG_DRIVE = {"bilveg","kanalveg","rkj"}                      # локальні проїзні — walkable, крім E/R-трас
+ELVEG_NONWALK_CAT = {"E","R"}                                  # europaveg / riksveg
+ELVEG_FERRY = {"bilferje","passasjerferje"}
+
+def parse_elveg(path):
+    """NVDB Vegnett Pluss GML → walkable-лінії (list[polyline] у WGS84) — той самий тип, що OSM highways,
+    тож compute_accessible не міняється. CRS файлу EPSG:5973 (гориз.==25833); x,y з 3D-posList → 4326."""
+    tr = Transformer.from_crs("EPSG:25833", "EPSG:4326", always_xy=True)
+    lines = []
+    for ev, el in ET.iterparse(path, events=("end",)):
+        if el.tag == NVDB + "Veglenke":
+            tv = (el.findtext(NVDB + "typeVeg") or "").strip().lower()
+            cat = (el.findtext(NVDB + "vegkategori") or "").strip().upper()
+            if tv not in ELVEG_FERRY and ((tv in ELVEG_PED) or (tv in ELVEG_DRIVE and cat not in ELVEG_NONWALK_CAT)):
+                ls = el.find(".//" + GML + "LineString")
+                pos = el.find(".//" + GML + "posList")
+                if pos is not None and pos.text:
+                    dim = int(ls.get("srsDimension", "2")) if ls is not None else 2
+                    nums = pos.text.split()
+                    pts = [tr.transform(float(nums[i]), float(nums[i + 1]))
+                           for i in range(0, len(nums) - (dim - 1), dim)]
+                    if len(pts) >= 2:
+                        lines.append(pts)
+            el.clear()
+    return lines
+
 def osm_classify(t):
     b = (t.get("building") or "").lower()
     am = (t.get("amenity") or "").lower()
@@ -147,19 +177,36 @@ def pip(x, y, ring):
     return inside
 
 def main():
-    # usage: build_tiles.py OUTDIR REF_LAT GML1 OSM1 [GML2 OSM2 ...]
-    outdir, ref_lat = sys.argv[1], float(sys.argv[2])
-    pairs = sys.argv[3:]
-    assert len(pairs) % 2 == 0 and pairs, "need OUTDIR REF_LAT then GML OSM pairs"
+    # usage: build_tiles.py OUTDIR REF_LAT [--elveg=e1.gml,e2.gml] [--osm-bridge] GML1 OSM1 [GML2 OSM2 ...]
+    #   --elveg=…    : D6-eligibility з Kartverket Elveg (замість OSM highways). Кома-розділені GML.
+    #   --osm-bridge : додати OSM footway/path/track до Elveg (закрити sti-провал; повертає ODbL по вег-шару).
+    elveg_paths, osm_bridge, rest = [], False, []
+    for a in sys.argv[1:]:
+        if a.startswith("--elveg="): elveg_paths = [p for p in a[len("--elveg="):].split(",") if p]
+        elif a == "--osm-bridge": osm_bridge = True
+        else: rest.append(a)
+    outdir, ref_lat = rest[0], float(rest[1])
+    pairs = rest[2:]
+    assert len(pairs) % 2 == 0 and pairs, "need OUTDIR REF_LAT [--elveg=…] then GML OSM pairs"
     os.makedirs(outdir, exist_ok=True)
-    mats, buildings, highways = [], [], []
+    mats, buildings, osm_hw = [], [], []
     for i in range(0, len(pairs), 2):
-        gml_path, osm_path = pairs[i], pairs[i+1]
-        m = parse_matrikkelen(gml_path)
-        b, h = parse_osm(osm_path)
-        print(f"  {os.path.basename(gml_path)}: Matrikkelen={len(m)} OSM buildings={len(b)} highways={len(h)}")
-        mats += m; buildings += b; highways += h
-    print(f"COMBINED: Matrikkelen pts={len(mats)}  OSM buildings={len(buildings)} highways={len(highways)}")
+        m = parse_matrikkelen(pairs[i])
+        b, h = parse_osm(pairs[i + 1])
+        print(f"  {os.path.basename(pairs[i])}: Matrikkelen={len(m)} OSM buildings={len(b)} highways={len(h)}")
+        mats += m; buildings += b; osm_hw += h
+    # D31: eligibility-мережа = офіційний Elveg (CC-BY), якщо задано; інакше OSM-highways (dogfood-фолбек)
+    if elveg_paths:
+        highways = []
+        for ep in elveg_paths:
+            e = parse_elveg(ep); highways += e
+            print(f"  {os.path.basename(ep)}: Elveg walkable={len(e)}")
+        src = "Elveg (NVDB Vegnett Pluss)"
+        if osm_bridge:
+            highways += osm_hw; src += f" + OSM-bridge ({len(osm_hw)})"
+    else:
+        highways = osm_hw; src = "OSM-highways (dogfood)"
+    print(f"COMBINED: Matrikkelen={len(mats)} buildings={len(buildings)} | eligibility={src}: {len(highways)} ліній")
 
     accessible = compute_accessible(buildings, highways, ref_lat)
 
@@ -205,8 +252,9 @@ def main():
         la = round(cylat / TILE); lo = round(cxlon / TILE)
         tiles.setdefault((la, lo), []).append(feat)
 
+    kv = "Matrikkelen" + (" + NVDB Vegnett Pluss/Elveg 2.0" if elveg_paths else "")
     manifest = {"tiles": [], "tileDeg": TILE,
-                "attribution": "© OpenStreetMap contributors (ODbL) · © Kartverket (Matrikkelen, CC BY 4.0)"}
+                "attribution": f"© OpenStreetMap contributors (ODbL) · © Kartverket ({kv}, CC BY 4.0)"}
     for (la, lo), feats in sorted(tiles.items()):
         key = f"area_{la}_{lo}"
         json.dump({"type": "FeatureCollection", "features": feats},

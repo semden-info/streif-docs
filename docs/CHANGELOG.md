@@ -7,6 +7,27 @@
 
 ---
 
+## 2026-07-04 — D6-eligibility на офіційний Kartverket Elveg (NVDB Vegnett Pluss), Варіант B (D31)
+
+**Замінено OSM-highways на офіційну дорожню мережу Kartverket для шару D6-accessible** — останній продакшн-пункт даних D31. Адверсивно-верифікований воркфлоу (3 research + pedestrian-скептик + synth, першоджерела Kartverket/Geonorge).
+
+**Що з'ясував воркфлоу:**
+- «Elveg 2.0» тепер розповсюджується як **NVDB Vegnett Pluss** (UUID `97e6a869-…`, **CC BY 4.0**, формат **GML**, EPSG:5973 — горизонтально == 25833). Завантаження — Geonorge order-API (POST `/api/order` → файл одразу `ReadyForDownload`).
+- Elveg **містить пішохідні шляхи** як першокласні (`fortau/gangveg/gsv/gangfelt/trapp`) — страх «тільки для авто» хибний. **АЛЕ** `sti`/`traktorveg` (неформальні стежки) ще накочуються (2026–2027) → recall-ризик по будинках, доступних лише лісовою стежкою.
+- typeVeg-літерали у ЖИВОМУ файлі ≠ специфікація (`bilveg`/`gsv`, не `enkelBilveg`/`gangOgSykkelveg`) — фільтр писано проти реальних значень.
+
+**A/B-гейт (обов'язковий перед перезаливкою, `spike/pipeline/elveg_ab.py`):** на Volda Elveg-only дав 82.0% accessible vs OSM 80.5%, але **регресував 309 буд.** (hytte 106 / outbuilding 113 — саме trail-reachable, підтверджує sti-провал). → **обрано Варіант B: Elveg + OSM-footpath-bridge** — нуль регресії, accessible регіону **83→87%**. Обґрунтування: тайл **і так ODbL** (геометрія OSM у Варіанті 1), тож bridge не додає ліцензійної ціни зараз; прибрати коли геометрія→FKB І Elveg домігрує стежки (або +Turrutebasen для природного шару).
+
+**Реалізація:** `parse_elveg` (Veglenke→walkable-лінії, 5973→4326, той самий тип що OSM highways — `compute_accessible` НЕ змінено) + прапорці `--elveg=`/`--osm-bridge` у `build_tiles.py`; manifest-атрибуція += NVDB Vegnett Pluss. Перегенеровано Volda+Ørsta = 416 тайлів (1.3 MB gzip). Клієнтська атрибуція «© Kartverket · © OpenStreetMap» уже покриває (Kartverket = Matrikkelen+Elveg).
+
+**⚠️ Відома розбіжність pipeline-vs-runtime:** offline-CDN-тайли несуть Elveg-eligibility; runtime on-demand (Overpass, `USE_CDN=false`) на девайсі й далі рахує accessible з OSM-highways (Elveg там немає). Вирівняється, коли Elveg-мережа теж поїде pre-hosted.
+
+**TODO:** перезалити тайли на R2 (потрібен новий токен — старий відкликано); custom-domain перед зовнішнім тестером.
+
+**Файли:** `spike/pipeline/build_tiles.py` (parse_elveg + CLI + attribution), `spike/pipeline/elveg_ab.py` (A/B-гейт, new), `spike/pipeline/README.md` (Elveg-крок).
+
+---
+
 ## 2026-07-04 — Desk-полір після CC-BY: атрибуція в UI + Room off-main/BundledSQLiteDriver
 
 **Атрибуція даних (юр-вимога ODbL OSM + CC-BY Kartverket).** Постійний видимий рядок

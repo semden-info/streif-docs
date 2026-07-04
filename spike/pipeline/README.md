@@ -25,19 +25,34 @@ python fetch_osm.py 1577 osm_volda.json      # Overpass area-query по ref=komm
 python fetch_osm.py 1520 osm_orsta.json
 ```
 
-### 3. Join → тайли (Matrikkelen + OSM → point-in-polygon → D6-accessible → 0.02°)
+### 2b. Elveg (NVDB Vegnett Pluss) — офіційна walkable-мережа для D6 (D31)
+«Elveg 2.0» тепер розповсюджується як **NVDB Vegnett Pluss** (UUID `97e6a869-8dd4-4379-bf39-f7d7dbf94863`, CC BY 4.0, GML, EPSG:5973≈25833). Завантаження — order-API (POST повертає файл одразу, `ReadyForDownload`):
 ```
-python build_tiles.py OUTDIR REF_LAT  GML1 OSM1  [GML2 OSM2 ...]
-# приклад (Volda+Ørsta, один прохід — union на межі):
+POST https://nedlasting.geonorge.no/api/order
+{"email":"...","orderLines":[{"metadataUuid":"97e6a869-8dd4-4379-bf39-f7d7dbf94863",
+  "areas":[{"code":"1577","type":"kommune","name":"Volda"}],
+  "formats":[{"name":"GML"}],
+  "projections":[{"code":"5973","codespace":"http://www.opengis.net/def/crs/EPSG/0/5973"}]}]}
+# відповідь.files[0].downloadUrl -> GET -> unzip -> {komm}NVDBVegnettPluss.gml
+```
+Walkable-фільтр (typeVeg-літерали з ЖИВОГО файлу): pedestrian `fortau/gangveg/gsv/gangfelt/trapp` завжди + `bilveg/kanalveg/rkj` крім vegkategori E/R; виключити `bilferje`. ⚠️ `sti`/`traktorveg` (стежки) в Elveg ще накочуються (2026–2027) → провал recall по неформальних стежках, тому `--osm-bridge` (нижче) або пізніше Turrutebasen.
+
+### 3. Join → тайли (Matrikkelen + OSM-геометрія + Elveg-eligibility → 0.02°)
+```
+python build_tiles.py OUTDIR REF_LAT [--elveg=e1.gml,e2.gml] [--osm-bridge] GML1 OSM1 [GML2 OSM2 ...]
+# продакшн (Volda+Ørsta, Elveg + OSM-bridge — Варіант B, D31):
 python build_tiles.py ./tiles 62.15 \
+  --elveg=1577NVDBVegnettPluss.gml,1520NVDBVegnettPluss.gml --osm-bridge \
   volda.gml osm_volda.json  orsta.gml osm_orsta.json
+# без --elveg → D6 рахується з OSM-highways (dogfood-фолбек)
 ```
 Вихід: `area_{la}_{lo}.geojson` (props: `building_id`=`m<bygningsnummer>`|`w<osmid>`, `type` [6 категорій], `accessible` [D6]) + `manifest.json`.
 Ключ тайла ЗБІГАЄТЬСЯ з `AreaCache.keyFor` (0.02°) — тайли лягають у наявний on-demand механізм.
+**A/B-гейт перед перезаливкою:** `elveg_ab.py` — порівнює accessible% Elveg-vs-OSM на Volda, ловить регресію (будинок, доступний лише пішо-стежкою, що OSM ловить, а Elveg — ні).
 
-### 4. Gzip (R2 сам НЕ стискає — передстискаємо)
+### 4. Gzip (R2 сам НЕ стискає — передстискаємо; bash-цикл повільний на Windows → Python)
 ```
-mkdir tiles-gz && for f in tiles/*.geojson; do gzip -9 -c "$f" > "tiles-gz/$(basename $f)"; done
+python -c "import gzip,glob,os,shutil; os.makedirs('tiles-gz',exist_ok=True); [shutil.copyfileobj(open(f,'rb'),gzip.open('tiles-gz/'+os.path.basename(f),'wb',9)) for f in glob.glob('tiles/area_*.geojson')]"
 ```
 
 ### 5. Заливка на Cloudflare R2
@@ -68,7 +83,7 @@ buildConfigField("String", "CDN_BASE_URL", "\"https://pub-<hash>.r2.dev\"")
 | 2xx, 999 | other |
 
 ## Продакшн-TODO (D31)
-- **Eligibility → Elveg** (зараз `accessible` рахується з OSM-highway; Elveg = чистіша CC-BY-сумісна ліцензія).
+- **Eligibility → Elveg ✅ ЗРОБЛЕНО (Варіант B: Elveg + OSM-bridge).** Тайли-`accessible` рахуються з Kartverket NVDB Vegnett Pluss + OSM-footpath-bridge (нуль recall-регресії). ⚠️ **Pipeline-vs-runtime розбіжність:** offline-тайли на CDN несуть Elveg-eligibility, але **runtime on-demand (D24, USE_CDN=false / Overpass) на девайсі й далі рахує accessible з OSM-highways** — Elveg там немає. Повне вирівнювання — коли Elveg-мережа теж поїде pre-hosted. Прибрати OSM-bridge, коли (а) геометрія → CC-BY (FKB) І (б) Elveg домігрує `sti`/`traktorveg` (~2027), або додати Turrutebasen (природний шар).
 - **Custom domain** `tiles.streif.no` перед першим зовнішнім тестером (r2.dev — dev-only, rate-limited) → потім вимкнути r2.dev + Smart Tiered Cache.
-- **FKB-геометрія** через публічного партнера (kommune/fylkeskommune/Høgskulen) — апгрейд без зміни архітектури (Matrikkelen-номер як стабільний id).
+- **FKB-геометрія** через публічного партнера (kommune/fylkeskommune/Høgskulen) — апгрейд без зміни архітектури (Matrikkelen-номер як стабільний id). Див. `docs/partner-outreach.md`.
 - **Overpass-era розкриття** — одноразово стерти (dogfood; `source` у Room розрізняє osm/matrikkelen).
