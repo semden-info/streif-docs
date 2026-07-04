@@ -25,7 +25,7 @@
 | D15 | **Offline-first (уточнено)** — tiles будинків bundled; база pre-cached/bundled для регіону; **не** live WMTS у полі | `01` §7, `05` §3.2 |
 | D16 | **Регіон MVP — Volda + Ørsta**; перший зріз spike — **Volda** (1577) | `09` §7, `11` |
 | D17 | **Spike — розділений:** Spike 1 (реальні дані → PMTiles → **симульований GPS** → кольорування), Spike 2 (реальний FGS + diagnostic) | `10` §4 |
-| D18 | **Локалізація** — bokmål + nynorsk + англ.; default за пристроєм (fallback NO→EN) | `08` §11 |
+| D18 | **Локалізація** — bokmål + nynorsk + англ.; default за пристроєм (fallback NO→EN). **Каркас реалізовано 2026-07-04:** `values/`(en)+`values-nb`+`values-nn`, UI+нотифікація; норв. переклади чернеткові (звірити носієм); діагностичні нотатки gate/loading — follow-up | `08` §11, CHANGELOG |
 | D19 | **Фреймворк** — native Kotlin + Compose; логіку тримати в чистих модулях для дешевого KMP-iOS пізніше | `05` §3 |
 | D20 | **Дух гейміфікації** — спокій, без streak, святкувати віхи без тиску, тижневий підсумок (in-app, без push) | `04` |
 | D21 | **Spike-1 (рендер) ✅ підтверджено на Pixel 9 (2026-06-21):** MapLibre Native рендерить ~10.8k кольорових будинків Volda. Знахідки: (а) **PMTiles вантажити `pmtiles://file://`** (копія asset→filesDir на 1-му запуску); **`pmtiles://asset://` крешить** `incorrect header check` (баг AssetFileSource, усі версії 12.3.1–13.3.0); (б) `.pmtiles`-asset потребує **`noCompress`**; (в) тайли — **tippecanoe** (не GDAL); (г) рендер так само ок із GeoJSON-джерелом (запасний шлях) | `05` §3.1, `11` |

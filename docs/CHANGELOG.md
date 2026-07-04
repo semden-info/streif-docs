@@ -69,6 +69,12 @@
 - *Обмеження:* перший (стартовий) тайл усе одно ~2600 буд. — пом'якшується `preloadArea` (тягнеться на відкритті застосунку, до Старту); повний лік (дрібні миттєві тайли) — із CC-BY CDN.
 - *Файли:* `AreaCache.kt` (TILE), `AreaLoader.kt` (halfKm), `TrackingRepository.kt` (`prefetchAhead`).
 
+**Локалізація (D18) — каркас bokmål / nynorsk / англійська.**
+- UI-рядки MainActivity + сповіщення сервісу витягнуто у string-ресурси: `values/` (англ., дефолт) + `values-nb/` (bokmål) + `values-nn/` (nynorsk). Мова — за локаллю пристрою (fallback → англ.). Verified: телефон uk-UA → англ. дефолт («Revealed N (X% of area) · tap Start», «START WALK», типи housing/outbuilding/…).
+- ⚠️ Норвезькі переклади **чернеткові** — звірити носієм (особливо nynorsk).
+- Не покрито (follow-up): транзієнтні діагностичні нотатки (gate/loading) в `ActivityGate`/`AreaLoader` лишились укр. — не мають Context (треба рефактор note→key).
+- Файли: `res/values{,-nb,-nn}/strings.xml`, `MainActivity.kt`, `WalkTrackingService.kt`.
+
 ---
 
 ## 2026-07-01 — Польова прогулянка (Ristevegen 1) + незалежне review D23 + 3 фікси
