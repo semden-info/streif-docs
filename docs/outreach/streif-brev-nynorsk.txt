@@ -1,0 +1,67 @@
+Denis Semenyuk
+[gateadresse], [postnr] Ørsta
+E-post: contact@semden.info · Tlf: [telefonnummer]
+
+[Stad], [dato]
+
+[Mottakarnamn / rolle]
+[Kommune / fylkeskommune / høgskule]
+[Avdeling – t.d. Kart og oppmåling / Seksjon folkehelse, idrett og friluftsliv]
+[Postadresse]
+
+
+Emne: Førespurnad om samarbeid – Streif, ein folkehelse- og friluftsliv-app for [Volda/Ørsta] bygd på opne kartdata
+
+
+Kjære [namn],
+
+Eg heiter Denis Semenyuk og bur her på Sunnmøre. Til dagleg driv eg eit
+enkeltpersonføretak, og på fritida utviklar eg appen Streif — eit ikkje-
+kommersielt, allmennyttig prosjekt som eg arbeider med åleine. Eg vender meg til
+dykk for å høyre om det kan vere grunnlag for eit samarbeid.
+
+Kort om Streif: Appen gjer den daglege utforskinga av nærmiljøet til noko
+motiverande. Etter kvart som brukaren ferdast ute, «lyser hus og område opp» i
+farge etter type — på eit fullstendig synleg offisielt kart, utan noka «tåke» som
+skjuler terrenget, av omsyn til tryggleiken. Kartet byggjer på opne offentlege
+data frå Kartverket. Tanken er enkel: å gjere det gildt å gå nye ruter der ein
+bur, anten det er i byen eller i naturen.
+
+Grunnen til at eg vender meg til nettopp dykk, er [grunn]. Streif treffer fleire
+av samfunnsoppdraga dykkar på ein gong — folkehelse (å motivere til dagleg
+gange), friluftsliv og integrering, der nykomne og innflyttarar kan bli kjende
+med nærområdet sitt på ein lågterskel måte. Streif er meint å utfylle, ikkje
+konkurrere med, eksisterande tilbod som StikkUT!: der StikkUT! løftar fram
+turmåla, handlar Streif om den daglege utforskinga tett på der folk bur.
+
+Personvern er bygt inn frå botnen av. I den første versjonen ligg alt lokalt på
+telefonen — rå GPS-data forlèt aldri eininga, og appen krev inga innlogging.
+Dette er eit medvite val for å vere trygg og i tråd med personvernregelverket.
+
+Det eg gjerne vil ha ein samtale om, er todelt:
+
+1. Kartdata. Streif fungerer alt på fritt tilgjengelege data — bygningsgeometri
+   frå OpenStreetMap kombinert med bygningstype frå Matrikkelen (CC-BY). For endå
+   betre kvalitet ville FKB-Bygning vore ønskjeleg. Eg er klar over at FKB ikkje
+   er fritt tilgjengeleg for private aktørar, og at ein Norge digitalt-part ikkje
+   utan vidare kan låne ut data til ein privat app. Difor spør eg ope: finst det
+   ein lovleg veg — til dømes at prosjektet blir forankra hos dykk som eit
+   allmennyttig tiltak, der de er dataansvarlege og eg utviklar løysinga? Eg
+   ønskjer å gjere dette rett, og høyrer gjerne kva som er mogleg innanfor
+   regelverket.
+
+2. Partnarskap og støtte. Eg ser etter ein lokal partnar som kan gje prosjektet
+   forankring, og på sikt eventuelt støtte etter ein norsk allmennyttig modell —
+   sponsing og gåver, ingen kommersiell sal. Eit førebilete er korleis Sparebanken
+   Møre har støtta StikkUT! saman med friluftsråda i regionen.
+
+Eg føreslår gjerne eit kort møte på 20–30 minutt — digitalt eller hos dykk — for
+å vise appen og høyre tankane dykkar. Eg er fleksibel på tid.
+
+Tusen takk for at de las. Eg ser fram til å høyre frå dykk.
+
+Med venleg helsing
+Denis Semenyuk
+[telefonnummer] · contact@semden.info
+
+Vedlegg (om ønskjeleg): kort prosjektomtale / skjermbilete av Streif
