@@ -184,6 +184,19 @@ class MainActivity : AppCompatActivity(), TrackingRepository.Listener, SensorEve
             gravity = Gravity.BOTTOM or Gravity.END
             rightMargin = 16; bottomMargin = 64
         })
+
+        // Атрибуція даних — постійно видима (ODbL OSM + CC-BY Kartverket вимагають credit)
+        val attributionView = TextView(this).apply {
+            text = getString(R.string.attribution)
+            textSize = 9f
+            setTextColor(0xCCFFFFFF.toInt())
+            setBackgroundColor(0x55000000.toInt())
+            setPadding(10, 3, 10, 3)
+        }
+        frame.addView(attributionView, FrameLayout.LayoutParams(wc, wc).apply {
+            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+            bottomMargin = 4
+        })
         return frame
     }
 
