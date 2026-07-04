@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -21,6 +22,8 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
@@ -80,7 +83,7 @@ class MainActivity : AppCompatActivity(), TrackingRepository.Listener, SensorEve
 
     private var tracking = false
     private var firstFix = true
-    private lateinit var startBtn: Button
+    private lateinit var startBtn: MaterialButton
     private lateinit var statusView: TextView
 
     // P17: обертання мапи за напрямком (компас). Дефолт — north-up; перемикач як у Google Maps.
@@ -90,11 +93,11 @@ class MainActivity : AppCompatActivity(), TrackingRepository.Listener, SensorEve
     private var lastRotMs = 0L
     private var sensorMgr: SensorManager? = null
     private var rotSensor: Sensor? = null
-    private var compassBtn: Button? = null
+    private var compassBtn: FloatingActionButton? = null
 
     // Google-Maps-стиль: вільний пан + кнопка «до мене». followMe=false щойно юзер перетягнув мапу.
     private var followMe = true
-    private var recenterBtn: Button? = null
+    private var recenterBtn: FloatingActionButton? = null
 
     private val permLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -153,9 +156,13 @@ class MainActivity : AppCompatActivity(), TrackingRepository.Listener, SensorEve
         }
         frame.addView(statusView, FrameLayout.LayoutParams(mp, wc).apply { gravity = Gravity.TOP })
 
-        startBtn = Button(this).apply {
+        // Material 3 filled pill-кнопка (замість голого Button) з іконкою ходьби
+        startBtn = MaterialButton(this).apply {
             text = getString(R.string.action_start)
             isEnabled = false
+            icon = ContextCompat.getDrawable(this@MainActivity, R.drawable.ic_walk)
+            iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
+            cornerRadius = 100                             // pill
             setOnClickListener { onStartStopTap() }
         }
         frame.addView(startBtn, FrameLayout.LayoutParams(wc, wc).apply {
@@ -163,27 +170,28 @@ class MainActivity : AppCompatActivity(), TrackingRepository.Listener, SensorEve
             bottomMargin = 64
         })
 
-        compassBtn = Button(this).apply {
-            text = "🧭"                                    // лише іконка (без тексту)
-            textSize = 20f
-            setBackgroundColor(0x66222222.toInt())         // north-up = приглушений; course-up підсвітиться (toggleCourseUp)
-            setOnClickListener { toggleCourseUp() }
+        // Material 3 mini-FAB (кругла, з елевацією + векторна іконка) замість emoji-квадрата
+        compassBtn = FloatingActionButton(this).apply {
+            size = FloatingActionButton.SIZE_MINI
+            setImageResource(R.drawable.ic_compass)
+            setOnClickListener { toggleCourseUp() }        // course-up підсвічується (applyCompassTint)
         }
         frame.addView(compassBtn, FrameLayout.LayoutParams(wc, wc).apply {
             gravity = Gravity.CENTER_VERTICAL or Gravity.END   // справа ПО ЦЕНТРУ — не налазить на статус угорі
-            rightMargin = 16
+            rightMargin = 24
         })
 
-        recenterBtn = Button(this).apply {
-            text = "◎"                                     // «повернутись до моєї позиції» (як my-location у Google Maps)
-            textSize = 20f
-            setBackgroundColor(0x66222222.toInt())
+        recenterBtn = FloatingActionButton(this).apply {
+            size = FloatingActionButton.SIZE_MINI
+            setImageResource(R.drawable.ic_my_location)    // «до моєї позиції» (як my-location у Google Maps)
+            imageTintList = ColorStateList.valueOf(themeColor(com.google.android.material.R.attr.colorOnPrimaryContainer))
             setOnClickListener { recenter() }
         }
         frame.addView(recenterBtn, FrameLayout.LayoutParams(wc, wc).apply {
             gravity = Gravity.BOTTOM or Gravity.END
-            rightMargin = 16; bottomMargin = 64
+            rightMargin = 24; bottomMargin = 64
         })
+        applyCompassTint()                                 // початковий тінт компаса (north-up)
 
         // Атрибуція даних — постійно видима (ODbL OSM + CC-BY Kartverket вимагають credit)
         val attributionView = TextView(this).apply {
@@ -480,9 +488,24 @@ class MainActivity : AppCompatActivity(), TrackingRepository.Listener, SensorEve
         this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
     // ---- P17: обертання мапи (north-up ↔ course-up за компасом; перемикач як у Google Maps) ----
+    /** Тема-колір за атрибутом (M3), для тінту FAB. */
+    private fun themeColor(attr: Int): Int {
+        val tv = android.util.TypedValue()
+        theme.resolveAttribute(attr, tv, true)
+        return tv.data
+    }
+
+    /** Тінт компас-FAB: course-up = primary (виразно), north-up = primaryContainer (приглушено). */
+    private fun applyCompassTint() {
+        val bgAttr = if (courseUp) com.google.android.material.R.attr.colorPrimary else com.google.android.material.R.attr.colorPrimaryContainer
+        val fgAttr = if (courseUp) com.google.android.material.R.attr.colorOnPrimary else com.google.android.material.R.attr.colorOnPrimaryContainer
+        compassBtn?.backgroundTintList = ColorStateList.valueOf(themeColor(bgAttr))
+        compassBtn?.imageTintList = ColorStateList.valueOf(themeColor(fgAttr))
+    }
+
     private fun toggleCourseUp() {
         courseUp = !courseUp
-        compassBtn?.setBackgroundColor(if (courseUp) 0xCC1A73E8.toInt() else 0x66222222.toInt())  // синій = course-up активний
+        applyCompassTint()                                 // M3-тінт: course-up активний = primary
         updateCamera(animate = true)                         // при вимкненні — плавно повернути на північ
     }
 

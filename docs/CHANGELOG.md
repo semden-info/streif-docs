@@ -7,6 +7,21 @@
 
 ---
 
+## 2026-07-05 — UI-стек залочено (Compose+M3, D32) + швидкий FAB-фікс кнопок
+
+**Рішення про UI-стек верифіковано адверсивним воркфлоу** (3 research: native-landscape / cross-platform / MapLibre-fit + devil's-advocate + вердикт; веб-джерела 2026). Розглянуто ВСІ 6 сучасних опцій (Compose+M3, Material 3 Expressive, Flutter, React Native, KMP+Compose Multiplatform, legacy Views). Адверсивний агент чесно не зміг побудувати реальний кейс проти.
+- **D32 — UI = Jetpack Compose + base Material 3.** Причини: нативний Kotlin (нуль-bridge до FGS/Fused/sensors/Room — вони нижче UI, framework-invariant); MapLibre Native Android v13.1.0 first-party (обгортки Flutter/RN відстають; Flutter має проблему фонового GPS ~$500/рік плагін); solo-dev один skillset; View/XML заморожено.
+- **Уточнення:** (1) писати Compose **CMP-clean** → двері iOS через KMP+CMP безкоштовно; (2) Material 3 Expressive **à-la-carte** (base 1.4.0 floor); (3) map через `AndroidView` над наявним MapView, НЕ pre-1.0 `maplibre-compose`.
+- Повний Compose-план UI-міграції → `10-roadmap.md` §12b (робити ПІСЛЯ польової валідації даних).
+
+**Швидкий FAB-фікс (проміжно на Views, до Compose-міграції).** Замінено застарілі emoji-на-сірому-квадраті кнопки на Material 3:
+- Компас + «до мене» → `FloatingActionButton` (SIZE_MINI, елевація, векторні Material-іконки `ic_compass`/`ic_my_location`). Компас course-up тепер підсвічується через M3-тінт (`colorPrimary`/`colorPrimaryContainer`, `applyCompassTint`), не hardcoded-синій.
+- «Почати прогулянку» → `MaterialButton` (filled pill, cornerRadius=100, іконка `ic_walk`).
+- Тема застосунку — вже `Theme.Material3.DayNight.NoActionBar`, тож FAB працює без змін теми. Збірка ✅; візуальна перевірка на Pixel 9 чекає під'єднання пристрою.
+- **Файли:** `MainActivity.kt` (типи полів → FAB/MaterialButton, конструкція кнопок, `themeColor`/`applyCompassTint`), `res/drawable/ic_compass.xml` + `ic_my_location.xml` + `ic_walk.xml` (нові векторні).
+
+---
+
 ## 2026-07-04 — D6-eligibility на офіційний Kartverket Elveg (NVDB Vegnett Pluss), Варіант B (D31)
 
 **Замінено OSM-highways на офіційну дорожню мережу Kartverket для шару D6-accessible** — останній продакшн-пункт даних D31. Адверсивно-верифікований воркфлоу (3 research + pedestrian-скептик + synth, першоджерела Kartverket/Geonorge).

@@ -93,6 +93,26 @@
 - **Локалізація** — bm/nn/en з MVP-1.
 - **Бренд** — назву «Streif» валідувати **до логотипа**: Navnesøk (домен + foretaksnavn + trademark) · тест розуміння на ~10 норвежцях · searchability у сторах (колізія з австрійською трасою Streif) → `DECISIONS.md` P1.
 
+## 12b. UI-міграція на Jetpack Compose + Material 3 (D32)
+
+> Стек залочено (D32). Зараз UI — View-based спайк (програмний FrameLayout). Мета — переписати **лише UI-шар** на Compose + M3, зберігши все нативне ядро. Візуальна мова — D28/`08`.
+
+**НЕ чіпаємо (нижче UI, framework-invariant):** MapLibre MapView (обгортаємо), `TrackingRepository`, `WalkTrackingService`/FGS, `AreaLoader`, Room, Elveg-пайплайн.
+
+**Кроки (послідовно):**
+1. **Тема** — `StreifTheme` (Compose M3): кольори-за-типом (D28), типографіка, light/dark; динамічний колір опційно.
+2. **Каркас** — `Box`/`Scaffold`: мапа на весь екран + overlay-контроли.
+3. **Мапа** — наявний MapView у `AndroidView` + `DisposableEffect` (lifecycle/пам'ять). Перевірений патерн; рендер-ядро (setGeoJson, шари) без змін. НЕ `maplibre-compose` (pre-1.0).
+4. **Контроли** — FAB-стек (компас, «до мене»), статус-плашка, filled/extended-FAB «Почати прогулянку» — M3-компоненти (проміжний FAB-фікс 2026-07-05 вже дав вигляд на Views).
+5. **Onboarding** — M3 `ModalBottomSheet`/`AlertDialog`.
+6. **Стан → ViewModel** — tracking/reveal-стан у `StateFlow`, UI спостерігає (`collectAsStateWithLifecycle`). Це і робить код **CMP-clean** (двері iOS).
+7. **Motion** — плавна поява кольору при reveal (M3 motion) — полір, post-паритет.
+8. **Прибрати View-код** після паритету.
+
+**Уточнення (D32):** base M3 `1.4.0` floor + Expressive-компоненти à-la-carte; писати CMP-clean.
+**Ризик:** середній, локалізований в UI (ядро не чіпаємо); найтонше — AndroidView-lifecycle мапи (відомий патерн).
+**Коли:** ПІСЛЯ польової валідації даних (CC-BY+Elveg) + тюнінгу — щоб не переписувати UI поверх нестабільної механіки.
+
 ## 13. Залежності
 
 - Фаза **0 → 1** (gate перед spike) → **1 → 2/3/4** (spike перед кодом UI).
