@@ -81,6 +81,13 @@
 - Verified на пристрої: свайп рухає мапу (не смикає назад), тап ◎ центрує назад.
 - Файл: `MainActivity.kt` (`followMe`, `OnCameraMoveStartedListener`, `recenter()`; `updateCamera` під `followMe`).
 
+**CC-BY продакшн-дані (D31) — рішення 1–4 залочено + КРОК 0 (data-спайк) виконано → гіпотеза D8 не спрацьовує для нашого регіону.**
+- *Лок (D31):* (1) eligibility-джерело продакшн = Kartverket Elveg; (2) хостинг = безкоштовний статик-CDN; (3) обсяг = регіон-first; (4) міграція Overpass-розкриттів = стерти.
+- *Крок 0 (research-воркфлоу 6 агентів + прямі Geonorge-API/WFS-зонди):* **головна знахідка — INSPIRE Buildings НЕ покриває Volda/Sunnmøre.** WFS `wfs.inspire-bu-core2d_limited` реально віддає полігони + `bygningsnummer` (localId), CC-BY, bbox-фільтр працює (Осло-регіон → 499 буд.), АЛЕ широкий bbox по Møre og Romsdal → **0 будинків** (покриття «deficient» на заході). Тобто **точних відкритих CC-BY footprints для нашого регіону НЕМА** (FKB `AccessIsRestricted:true`, INSPIRE відсутній). *(Прим.: попередній спайк D8 схибив на «голому» endpoint — 500; правильний = `_limited`; але для Volda все одно 0.)*
+- *Що ПОКРИВАЄ Volda (CC-BY):* Matrikkelen-Bygningspunkt (ТОЧКИ + `bygningstype` + `bygningsnummer`, national, per-kommune-файл) + N50 (генералізовані полігони). Точних індивідуальних footprints — нема.
+- *Наслідок:* D8 треба уточнити — рішення полігон-джерела відкрите (варіанти: self-host OSM/ODbL з enrichment Matrikkelen; Matrikkelen+N50 CC-BY генералізовано; Matrikkelen+синтетичні квадрати). Чекає рішення Дениса.
+- *Артефакти:* `scratchpad/step0_research.js` (воркфлоу) + прямі WFS-тести.
+
 ---
 
 ## 2026-07-01 — Польова прогулянка (Ristevegen 1) + незалежне review D23 + 3 фікси
