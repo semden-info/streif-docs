@@ -322,8 +322,7 @@ class MainActivity : AppCompatActivity(), TrackingRepository.Listener, SensorEve
             // D24 on-demand: порожній store + AreaLoader (зони тягнемо на льоту, без важкого seed)
             val s = BuildingStore(radiusM)
             store = s
-            val db = MvpDatabase.get(this)                       // MVP-0: Room-персистенція (D11)
-            MvpImporter.importVisitsOnce(db, filesDir)           // одноразова міграція visited.txt → Room
+            val db = MvpDatabase.get(this)                       // MVP-0: Room-персистенція (D11); міграція+читання в init.dbIo (off-main)
             // DEBUG-дубль у visited.txt — щоб analyze.py (польовий аналіз) далі працював під час тюнінгу
             val debugVs = if (BuildConfig.DEBUG) VisitStore(java.io.File(filesDir, "visited.txt")) else null
             // ⚠️ diagnostic-збір ЛИШЕ в debug — release автоматично не збирає (D14)
@@ -371,7 +370,7 @@ class MainActivity : AppCompatActivity(), TrackingRepository.Listener, SensorEve
     }
 
     private fun initWalk(s: BuildingStore, db: MvpDatabase, debugVs: VisitStore?, diag: DiagnosticRecorder?) {
-        TrackingRepository.init(s, db.visits(), db.sessions(), debugVs, diag)
+        TrackingRepository.init(s, db, filesDir, debugVs, diag)
         visitedSource?.setGeoJson(TrackingRepository.revealedCollection())
         TrackingRepository.listener = this
         tracking = TrackingRepository.isTracking            // синхронізуємось зі станом сервісу (recreation)

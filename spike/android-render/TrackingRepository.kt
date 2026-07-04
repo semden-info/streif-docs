@@ -44,10 +44,14 @@ object TrackingRepository {
     private var visitDao: VisitDao? = null                     // Room-персистенція розкриттів (D11)
     private var sessionDao: SessionDao? = null                 // Room-сесії: insert@start + checkpoint (лікує D23 #11)
     private var debugVisitStore: VisitStore? = null            // DEBUG-дубль у visited.txt для analyze.py
-    private var sessionRowId: Long = 0                         // rowId поточної сесії (інкрементальний checkpoint)
+    @Volatile private var sessionRowId: Long = 0              // rowId поточної сесії (dbIo-owned; інкрементальний checkpoint)
     private var fixesSinceCp = 0                               // фіксів від останнього session-checkpoint
     private var diag: DiagnosticRecorder? = null   // diagnostic-збір (лише debug; off у release)
-    private val persistedIds = HashSet<String>()   // збережені розкриття (відновлюємо при завантаженні зон)
+    private val persistedIds = HashSet<String>()   // збережені розкриття (відновлюємо при завантаженні зон; лише main)
+
+    // MVP-0-полір (D11): усі Room/файл-записи поза main-looper (reveal-колбек на main → блокуючий DB давав би jank/ANR)
+    private val dbIo = java.util.concurrent.Executors.newSingleThreadExecutor()   // FIFO — серіалізує всі DB-операції
+    private val dbMain = android.os.Handler(android.os.Looper.getMainLooper())
     private val revealedFeatures = ArrayList<Feature>()
     private val byType = HashMap<String, Int>()
     private var lastLat = Double.NaN
@@ -72,16 +76,24 @@ object TrackingRepository {
     private var sessionDistanceM = 0.0
     private var sessionStartTs = 0L
 
-    fun init(store: BuildingStore, visitDao: VisitDao, sessionDao: SessionDao, debugVisitStore: VisitStore?, diag: DiagnosticRecorder?) {
+    fun init(store: BuildingStore, db: MvpDatabase, filesDir: java.io.File, debugVisitStore: VisitStore?, diag: DiagnosticRecorder?) {
         this.store = store
-        this.visitDao = visitDao
-        this.sessionDao = sessionDao
+        this.visitDao = db.visits()
+        this.sessionDao = db.sessions()
         this.debugVisitStore = debugVisitStore
         this.diag = diag
         revealed.clear(); revealedFeatures.clear(); byType.clear(); persistedIds.clear(); runMin.clear(); eligible.clear()
         lastLat = Double.NaN; lastLon = Double.NaN
-        for (v in visitDao.all()) persistedIds.add(v.buildingId)   // Room (allowMainThreadQueries — spike)
-        reconcilePersisted()   // seed-store (perf) — одразу; on-demand — порожньо, доберемо при завантаженні зон
+        // MVP-0-полір: міграція visited.txt→Room + читання збережених розкриттів поза main; reconcile+UI назад на main.
+        dbIo.execute {
+            MvpImporter.importVisitsOnce(db, filesDir)
+            val ids = db.visits().all().map { it.buildingId }
+            dbMain.post {
+                persistedIds.addAll(ids)
+                reconcilePersisted()   // on-demand: зазвичай порожньо (store ще без зон) — добере onAreaLoaded
+                listener?.onReveal(FeatureCollection.fromFeatures(ArrayList(revealedFeatures)), revealed.size)
+            }
+        }
     }
 
     /** Відновити збережені розкриття, чиї будинки вже є в store (після завантаження зони). */
@@ -129,7 +141,8 @@ object TrackingRepository {
         sessionNew = 0; sessionDistanceM = 0.0; sessionStartTs = System.currentTimeMillis()
         fixesSinceCp = 0
         // D23 #11: рядок сесії існує ВІД старту → краш/OOM посеред прогулянки не губить усю сесію
-        sessionRowId = sessionDao?.insert(SessionEntity(startTs = sessionStartTs, endTs = 0, distanceM = 0.0, newCount = 0)) ?: 0
+        val ts = sessionStartTs   // MVP-0-полір: insert off-main; rowId ставимо в dbIo (наступні update/delete — той самий FIFO-executor)
+        dbIo.execute { sessionRowId = sessionDao?.insert(SessionEntity(startTs = ts, endTs = 0, distanceM = 0.0, newCount = 0)) ?: 0 }
         ActivityGate.reset()
     }
 
@@ -147,22 +160,23 @@ object TrackingRepository {
 
     /** Кінець сесії — записати підсумок (фундамент тижневого підсумку/рейтингів). */
     fun endSession() {
-        val id = sessionRowId
-        if (id > 0L) {
-            if (sessionNew > 0 || sessionDistanceM >= 1.0)
-                sessionDao?.update(SessionEntity(id, sessionStartTs, System.currentTimeMillis(), sessionDistanceM, sessionNew))
-            else
-                sessionDao?.delete(id)   // Start→Stop без руху — прибрати порожній рядок
+        val ts = sessionStartTs; val d = sessionDistanceM; val n = sessionNew; val now = System.currentTimeMillis()
+        dbIo.execute {   // MVP-0-полір: off-main; sessionRowId читаємо/скидаємо в тому ж FIFO-executor
+            val id = sessionRowId
+            if (id > 0L) {
+                if (n > 0 || d >= 1.0) sessionDao?.update(SessionEntity(id, ts, now, d, n))
+                else sessionDao?.delete(id)   // Start→Stop без руху — прибрати порожній рядок
+            }
+            sessionRowId = 0
         }
-        sessionRowId = 0
         lastLat = Double.NaN; lastLon = Double.NaN; sessionStartTs = 0L
         recentT.clear(); recentLat.clear(); recentLon.clear()   // D23 #3: не лишати шлях для replay після Stop
     }
 
     /** Інкрементальний checkpoint сесії (D23 #11) — щоб краш не з'їв прогрес між reveal-ами. */
     private fun checkpointSession() {
-        val id = sessionRowId
-        if (id > 0L) sessionDao?.update(SessionEntity(id, sessionStartTs, System.currentTimeMillis(), sessionDistanceM, sessionNew))
+        val ts = sessionStartTs; val d = sessionDistanceM; val n = sessionNew; val now = System.currentTimeMillis()
+        dbIo.execute { val id = sessionRowId; if (id > 0L) sessionDao?.update(SessionEntity(id, ts, now, d, n)) }
     }
 
     fun revealedCollection(): FeatureCollection = FeatureCollection.fromFeatures(ArrayList(revealedFeatures))
@@ -239,9 +253,10 @@ object TrackingRepository {
         }
         if (fresh.isNotEmpty()) {
             sessionNew += fresh.size
-            visitDao?.insertAll(fresh.map { VisitEntity(it.id, it.type, it.ts, SOURCE) })   // Room (первинне)
-            debugVisitStore?.append(fresh)                                                    // DEBUG-дубль для analyze.py
-            checkpointSession()                                                               // D23 #11
+            val rows = fresh.map { VisitEntity(it.id, it.type, it.ts, SOURCE) }
+            val dbg = ArrayList(fresh)
+            dbIo.execute { visitDao?.insertAll(rows); debugVisitStore?.append(dbg) }   // MVP-0-полір: Room+файл off-main
+            checkpointSession()                                                        // D23 #11 (теж off-main, той самий FIFO)
             listener?.onReveal(FeatureCollection.fromFeatures(ArrayList(revealedFeatures)), revealed.size)
         }
         return fresh.size
@@ -269,7 +284,7 @@ object TrackingRepository {
     fun reset() {
         revealed.clear(); revealedFeatures.clear(); byType.clear(); runMin.clear(); eligible.clear()
         lastLat = Double.NaN; lastLon = Double.NaN
-        sessionNew = 0; sessionDistanceM = 0.0; sessionStartTs = 0L; sessionRowId = 0
-        visitDao?.clear(); debugVisitStore?.clear()
+        sessionNew = 0; sessionDistanceM = 0.0; sessionStartTs = 0L
+        dbIo.execute { visitDao?.clear(); debugVisitStore?.clear(); sessionRowId = 0 }   // MVP-0-полір: off-main
     }
 }

@@ -7,6 +7,33 @@
 
 ---
 
+## 2026-07-04 — Desk-полір після CC-BY: атрибуція в UI + Room off-main/BundledSQLiteDriver
+
+**Атрибуція даних (юр-вимога ODbL OSM + CC-BY Kartverket).** Постійний видимий рядок
+«© Kartverket · © OpenStreetMap» унизу-центр мапи (`R.string.attribution`; `MainActivity`
+TextView, поряд із логотипом MapLibre). Verified на пристрої. Без цього — порушення обох ліцензій.
+
+**Room-полір (D11) — закрито останній тех-борг MVP-0-ядра з D23-review.**
+- *Проблема:* `matchAt`/reveal іде на **main-looper** (Fused-колбек), а `visitDao.insertAll` на кожному
+  розкритті + старт-читання `visitDao.all()`/міграція — блокуючий Room на головному потоці
+  (`allowMainThreadQueries` — spike-шорткат). При рості історії розкриттів = jank/ANR.
+- *Фікс:* усі Room/файл-виклики винесено на `TrackingRepository.dbIo` (single-thread executor, FIFO —
+  серіалізує операції). `startSession`/`checkpointSession`/`endSession`/reveal-`insertAll`/`reset` —
+  fire-and-forget off-main (значення snapshot-ляться на main перед чергою; `sessionRowId` @Volatile,
+  читається/пишеться лише в dbIo). `init` тепер робить міграцію+читання в dbIo → reconcile+UI назад
+  на main (`dbMain.post`). `allowMainThreadQueries` прибрано.
+- *BundledSQLiteDriver (D11):* `.setDriver(BundledSQLiteDriver())` + `.setQueryCoroutineContext(Dispatchers.IO)`
+  + `androidx.sqlite:sqlite-bundled:2.6.2` (= версія, що її тягне Room 2.8.4). Однаковий SQLite на всіх
+  пристроях (не залежить від версії ОС), `libsqliteJni.so` у APK.
+- *Верифіковано на Pixel 9:* збірка ✅; запуск без креша (нуль «Cannot access database on the main thread»);
+  init-reconcile + area-fetch (970) працюють; START→STOP (session insert+delete через драйвер) без помилок;
+  `databases/streif.db.lck` підтверджує, що BundledSQLiteDriver реально активний (WAL: db-wal/db-shm).
+- *Файли:* `MvpDatabase.kt` (driver+coroutine-context, прибрано shortcut), `TrackingRepository.kt`
+  (dbIo executor + off-main усіх DAO-викликів + async init), `MainActivity.kt` (init-сигнатура),
+  `build.gradle.kts`/`libs.versions.toml` (sqlite-bundled).
+
+---
+
 ## 2026-07-04 — CC-BY продакшн-дані ЖИВІ: Варіант-1 пайплайн (OSM+Matrikkelen) → Cloudflare R2 (D31 realized)
 
 **Найбільша віха: тестові Overpass-дані замінено офіційним CC-BY-пайплайном, тайли живі на CDN.** Реалізує D31 (обрано Варіант 1: OSM-геометрія ODbL + Matrikkelen-збагачення).
