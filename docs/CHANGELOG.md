@@ -37,6 +37,11 @@
 - *Клієнтський розрахунок* (dogfood на OSM/ODbL); продакшн — на сервері в CC-BY-пайплайні (лок D6).
 - *Файли:* `AreaSource.kt` (highway-fetch + `tagAccessible` + grid), `BuildingStore.kt` (`accessible`-масив + `isAccessible`), `TrackingRepository.kt` (гейт у `matchAt`).
 
+**MVP-0 (а) — onboarding + прогрес.**
+- *Onboarding:* перший запуск → картка «Це твоя мапа. Кожен будинок, повз який пройдеш пішки, засвітиться своїм кольором… Без поспіху, без штрафів.» + «Зрозуміло» (SharedPreferences-gated, показ РАЗ; спокій D20/D28, без логіну D26). Verified на пристрої: з'являється раз, прапорець тримається на повторному запуску.
+- *Прогрес:* Coverage-% тепер від **досяжних** будинків (D6 `accessibleCount`), не від усіх завантажених → «Розкрито N (X% околиці)». Чесніший знаменник (розкрито ⊆ accessible). *(Дрібний борг: на relaunch показує 0, поки зона не довантажилась+reconcile — можна показувати лічильник із Room одразу.)*
+- *Файли:* `MainActivity.kt` (`maybeShowOnboarding` + текст «% околиці»), `BuildingStore.kt` (`accessibleCount`), `Stats.kt`/`TrackingRepository.kt` (знаменник).
+
 ---
 
 ## 2026-07-01 — Польова прогулянка (Ristevegen 1) + незалежне review D23 + 3 фікси
