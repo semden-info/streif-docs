@@ -75,6 +75,12 @@
 - Не покрито (follow-up): транзієнтні діагностичні нотатки (gate/loading) в `ActivityGate`/`AreaLoader` лишились укр. — не мають Context (треба рефактор note→key).
 - Файли: `res/values{,-nb,-nn}/strings.xml`, `MainActivity.kt`, `WalkTrackingService.kt`.
 
+**Вільний пан мапи + кнопка «до мене» (фідбек: мапа постійно центрувалась, годі роздивитись).**
+- Камера слідує за позицією ЛИШЕ доки `followMe=true`; щойно юзер перетягнув/зумнув пальцем (`OnCameraMoveStarted` = `REASON_API_GESTURE`) → `followMe=false`, мапа лишається де поставив (і компас-обертання теж не смикає).
+- Кнопка **◎** (bottom-right) — повертає до поточної позиції (zoom 16.5 + bearing) і відновлює слідування. Як my-location у Google Maps.
+- Verified на пристрої: свайп рухає мапу (не смикає назад), тап ◎ центрує назад.
+- Файл: `MainActivity.kt` (`followMe`, `OnCameraMoveStartedListener`, `recenter()`; `updateCamera` під `followMe`).
+
 ---
 
 ## 2026-07-01 — Польова прогулянка (Ristevegen 1) + незалежне review D23 + 3 фікси
