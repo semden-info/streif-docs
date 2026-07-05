@@ -205,6 +205,18 @@ class MainActivity : AppCompatActivity(), TrackingRepository.Listener, SensorEve
             gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
             bottomMargin = 4
         })
+
+        // Edge-to-edge (targetSdk 36 малює під системними барами): підняти нижні контроли над
+        // навігаційною смужкою (inset). Проміжно на Views; Compose-міграція зробить це через windowInsetsPadding.
+        // Верифікований баг на Samsung із фіксованою 3-кнопковою навігацією (кнопка «Почати» ховалась).
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(frame) { _, insets ->
+            val nav = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars()).bottom
+            (startBtn.layoutParams as FrameLayout.LayoutParams).bottomMargin = 64 + nav
+            (recenterBtn?.layoutParams as? FrameLayout.LayoutParams)?.bottomMargin = 64 + nav
+            (attributionView.layoutParams as FrameLayout.LayoutParams).bottomMargin = 4 + nav
+            frame.requestLayout()
+            insets
+        }
         return frame
     }
 
