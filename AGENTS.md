@@ -1,7 +1,7 @@
 # AGENTS.md — Streif
 
 > Цей файл — **єдине джерело** майстер-контексту проєкту. AI-агенти читають його автоматично щосесії: **Codex** — напряму, **Claude Code** — через `@import` у `CLAUDE.md`.
-> Останнє оновлення: 2026-06-27 (повна хронологія — `docs/CHANGELOG.md`)
+> Останнє оновлення: 2026-07-05 (повна хронологія — `docs/CHANGELOG.md`)
 
 ---
 
@@ -36,7 +36,8 @@
 - **MVP-0 (2026-07-04, велика сесія):** Room-персистенція (D11) ✅; D6 eligibility (accessible з пішої мережі) ✅; onboarding + прогрес-% ✅; локалізація bokmål/nynorsk/англ (D18) ✅; P17 обертання-за-компасом + вільний пан/«до мене» ✅; матчинг-фікси D23 #4/#5 ✅. **CC-BY продакшн-дані ЖИВІ (D31/Варіант 1):** офлайн-пайплайн OSM(ODbL)+Matrikkelen(CC-BY) → 416 тайлів Volda+Ørsta на **Cloudflare R2**; Android переключено на CDN (`CdnGeoJsonAreaSource`, `BuildConfig.USE_CDN`), on-device fetch+render верифіковано. Пайплайн → `spike/pipeline/`.
 - **Desk-трек (2026-07-04/05, усе ✅ й закомічено):** атрибуція ODbL/CC-BY в UI; Room-полір (off-main + BundledSQLiteDriver, D11); **Elveg-eligibility (D31, Варіант B: NVDB Vegnett Pluss + OSM-bridge)** — тайли перезалито на R2; **UI-стек залочено (D32: Compose+M3, адверсивно верифіковано)** + швидкий FAB-фікс кнопок (Material FAB/pill); партнерський outreach-лист готовий (`docs/partner-outreach.md`, bokmål+nynorsk).
 - **Польовий тест ✅ ЗРОБЛЕНО (2026-07-05, 2 телефони на CC-BY+Elveg, P2):** дані → `spike/fieldtest/walk_20260705/`. **Recall 100%** (обидва пристрої), **precision 87%**, крос-девайс 89%. Батарея **Stage C ПРОЙДЕНО** (~6-8%/год екран-off). Ключовий висновок: хибні розкриття НЕ відрізнити порогом (стіна+accuracy TP/FP перекриваються) → **пороги не чіпаємо, precision на межі GPS-only; приріст = кращі сигнали post-MVP** (map-matching/side-aware). Старт-гард розглянуто й відхилено (дані спростували).
-- **Наступний крок (КОД, не потребує прогулянки):** **повний Compose-rebuild UI** — план `10-roadmap.md §12b` (Compose+M3, D32; тема D28; map через AndroidView; ViewModel/StateFlow CMP-clean; ⚠️ window-insets обов'язково). Паралельно/потім: більше польових маршрутів (генералізація тюнінгу поза Volda-центром); custom-domain R2 перед зовнішнім тестером. Стан+команди → `spike/android-render/SPIKE-STATUS.md`; CC-BY-пайплайн → `spike/pipeline/`.
+- **Compose-UI (D32) ЗРОБЛЕНО (2026-07-05, злито в `main`):** повна міграція View→Compose+M3 за §12b — тема D28, мапа через `AndroidView`+`DisposableEffect` (не maplibre-compose), ViewModel/StateFlow CMP-clean, window-insets ✓ (device-тест жест+3-кнопки), MainActivity 600→250. + типи будівель **іконками колір-за-типом з тап-деталями** (A+B1, ідея Дениса, D28 §8). Walk+bench device-верифіковано. Стек-деталі → `CHANGELOG.md` (2026-07-05).
+- **Наступний крок:** **польовий walk-тест Дениса на Compose-UI** — розкриття на ходу + компас-обертання + контраст золотого hytte на плашці (`08` §13). Далі post-MVP: region-manifest «X з Y у місті» + правильний Coverage-% (`P18`); більше польових маршрутів (генералізація тюнінгу поза Volda-центром); custom-domain R2. Стан+команди → `spike/android-render/SPIKE-STATUS.md`; CC-BY-пайплайн → `spike/pipeline/`.
 - **Незалежне review (D23):** на межі **Spike-2 → MVP-0**; brief готовий → `docs/REVIEW-D23-BRIEF.md` (мапа коду + фокус-області + run-plan).
 - **Gate перед розробкою (Фаза 0):** ✅ пройдено.
 - **MVP-напрям:** місто-first, device-local v1 (зафіксовано).

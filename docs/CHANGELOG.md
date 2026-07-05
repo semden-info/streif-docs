@@ -7,6 +7,22 @@
 
 ---
 
+## 2026-07-05 — UI-міграція на Jetpack Compose завершена (D32) + типи іконками
+
+**Повний rebuild UI-шару View→Compose+M3** (план `10-roadmap.md §12b`), 8 фаз, кожна з device-gate на Pixel 9. Ядро (TrackingRepository/WalkTrackingService/AreaLoader/Room/CC-BY-пайплайн) НЕ торкане — мігровано лише UI.
+
+**Фази:** (0) toolchain — compose-compiler 2.2.10 + BOM 2026.06.01 / material3 1.4.0 floor (AGP-вбудований Kotlin; версії звірено з докою); (1) `StreifTheme` — M3 light/dark, спокійна фьорд-teal база, `BuildingPalette` (колір+іконка+назва за типом — єдине джерело для Compose і MapLibre-виразу); (2) `WalkViewModel`+`WalkUiState` — StateFlow, CMP-clean (5 JVM-тестів без емулятора); (3) `StreifMap` — наявний MapLibre `MapView` через `AndroidView`+`DisposableEffect` (НЕ pre-1.0 maplibre-compose), `MapController` = лифт map+core-glue; (4) оверлей — `WalkScreen`+`StatusPlate`/`FabStack`/`StartButton`/`Attribution`/`OnboardingSheet`(ModalBottomSheet); (5) дротування — FGS/перми/компас-сенсор/onboarding-тригер/`enableEdgeToEdge`; (6) чистка — MainActivity 600→250 (−456 рядків мертвого View-коду), перф-harness (bench/combo/replay) недоторканий.
+
+**⚠️ Window-insets (верифікований Samsung-баг D32):** нижні контролі через `windowInsetsPadding(navigationBars)` — перевірено НА ПРИСТРОЇ в **жестовому І 3-кнопковому** режимах (контролі над навбаром, атрибуція повністю видима).
+
+**Типи будівель іконками (A+B1, ідея Дениса + D28 §8):** розклад типів у плашці — контурні Material-іконки колір-за-типом (home/cottage/apartment/church/warehouse/city; тінт=колір типу) + число інлайн; тап → M3 RichTooltip з назвою + «N revealed». Знаменник «X з Y у місті» відкладено (`P18`: region-manifest у пайплайні; on-demand D24 не дає загальних тоталів).
+
+**Device-верифіковано (Pixel 48290DLAQ003FR):** мапа+lifecycle (background→foreground без крешу/витоку), on-demand +970 будинків, visited-overlay кольором-за-типом, старт→FGS→«ти тут»+live-статус+route, onboarding first-run (ModalBottomSheet), іконки+tooltip, bench ~60fps після чистки. **Лишилось:** польовий walk-тест Дениса (розкриття на ходу + компас + контраст золотого hytte).
+
+**Гілки:** `claude/compose-ui` (Android) / `claude/vigorous-shaw-83969a` (docs) → злито в `main`, запушено (GitHub `streif`/`streif-docs`).
+
+---
+
 ## 2026-07-05 — Перший польовий тест на CC-BY+Elveg-даних (2 телефони) — P2
 
 **Перша прогулянка на офіційних даних Kartverket** (Matrikkelen-геометрія+тип via CDN, Elveg-eligibility). ~30 хв, Volda-центр, 2 пристрої одночасно: **Pixel 9** (кишеня, екран-off → батарея+автотрек) + **Galaxy S24 FE** (рука, екран-on → ✓/✗-мітки). Дані → `spike/fieldtest/walk_20260705/`.
