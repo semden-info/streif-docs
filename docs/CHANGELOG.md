@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-07-06 — P18: «X з Y у місті» + city Coverage-% (region-manifest)
+
+**Тап-по-іконці типу в плашці тепер показує «X of Y revealed»** (Y = усього типу в місті), а головний Coverage-% рахується **«від міста»** (досяжних із пішої мережі), не «від завантаженого поблизу» (on-demand D24 знав лише завантажені тайли).
+
+**Пайплайн (`spike/pipeline/`):** `build_tiles.py` розширює `manifest.json` — `byType:{type:{total,accessible}}` + `total`/`accessible`/`region`/`generated` (скан збудованих тайлів; прапорець `--region=`). `upload_r2.py` тепер заливає `manifest.json` окремо (uncompressed, `application/json`) — раніше лівся лише `*.geojson`, тож manifest **404-ився на R2**.
+
+**Android:** `RegionManifest` (парс `manifest.json`, `org.json` — нуль нових залежностей) + `CdnGeoJsonAreaSource.fetchManifest`; `MapController` тягне раз (кеш `filesDir` миттєво + свіже з CDN у фоні, offline-first); `TrackingRepository.setRegionManifest` + `Stats.cityByType/cityAccessible/cityCoveragePct` (CMP-clean). **Fallback:** нема manifest (Overpass/404/офлайн) → локальна поведінка (нічого не ламається).
+
+**Device-верифіковано (Pixel, синтетичний manifest у кеші):** плашка «2,4% від міста» (69/2909), tooltip «outbuilding — 18 of 1200 revealed». **Реальні числа** — після регенерації+заливки Дениса (`--region="Volda+Ørsta"` + `cp manifest.json` у gz-каталог перед `upload_r2.py`). Гілки злито в `main` (обидва репо). Реалізує `P18`.
+
+---
+
 ## 2026-07-05 — UI-міграція на Jetpack Compose завершена (D32) + типи іконками
 
 **Повний rebuild UI-шару View→Compose+M3** (план `10-roadmap.md §12b`), 8 фаз, кожна з device-gate на Pixel 9. Ядро (TrackingRepository/WalkTrackingService/AreaLoader/Room/CC-BY-пайплайн) НЕ торкане — мігровано лише UI.
