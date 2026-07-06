@@ -7,7 +7,7 @@ OUT: area_{la}_{lo}.geojson tiles (0.02deg grid, matches AreaCache.keyFor) with 
      building_id (m<bygningsnummer> | w<osmid>), type (Streif 6-cat), accessible (bool D6)
      + manifest.json
 """
-import sys, os, json, math
+import sys, os, json, math, datetime
 import xml.etree.ElementTree as ET
 from pyproj import Transformer
 
@@ -180,10 +180,11 @@ def main():
     # usage: build_tiles.py OUTDIR REF_LAT [--elveg=e1.gml,e2.gml] [--osm-bridge] GML1 OSM1 [GML2 OSM2 ...]
     #   --elveg=…    : D6-eligibility з Kartverket Elveg (замість OSM highways). Кома-розділені GML.
     #   --osm-bridge : додати OSM footway/path/track до Elveg (закрити sti-провал; повертає ODbL по вег-шару).
-    elveg_paths, osm_bridge, rest = [], False, []
+    elveg_paths, osm_bridge, region, rest = [], False, "", []
     for a in sys.argv[1:]:
         if a.startswith("--elveg="): elveg_paths = [p for p in a[len("--elveg="):].split(",") if p]
         elif a == "--osm-bridge": osm_bridge = True
+        elif a.startswith("--region="): region = a[len("--region="):]   # P18: назва регіону в manifest
         else: rest.append(a)
     outdir, ref_lat = rest[0], float(rest[1])
     pairs = rest[2:]
@@ -261,8 +262,24 @@ def main():
                   open(os.path.join(outdir, key + ".geojson"), "w", encoding="utf-8"),
                   ensure_ascii=False, separators=(",", ":"))
         manifest["tiles"].append({"key": key, "n": len(feats)})
+    # P18 region-manifest: лічильники по типах (застосунок показує «X розкрито з Y у місті» + city-Coverage-%)
+    CATS = ["housing", "hytte", "public", "sacral", "outbuilding", "other"]
+    byType = {c: {"total": 0, "accessible": 0} for c in CATS}
+    tot_all = acc_all = 0
+    for feats in tiles.values():
+        for f in feats:
+            p = f["properties"]; d = byType.setdefault(p["type"], {"total": 0, "accessible": 0})
+            d["total"] += 1; tot_all += 1
+            if p["accessible"]: d["accessible"] += 1; acc_all += 1
+    manifest["region"] = region
+    manifest["generated"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    manifest["byType"] = byType
+    manifest["total"] = tot_all
+    manifest["accessible"] = acc_all
     json.dump(manifest, open(os.path.join(outdir, "manifest.json"), "w", encoding="utf-8"),
               ensure_ascii=False, indent=1)
+    print(f"manifest: region='{region}' total={tot_all} accessible={acc_all} "
+          f"byType={ {k: v['total'] for k, v in byType.items()} }")
 
     acc_n = sum(1 for v in accessible.values() if v)
     print(f"joined: {matched}/{len(buildings)} buildings enriched w/ Matrikkelen ({100*enriched/max(len(buildings),1):.1f}%)")

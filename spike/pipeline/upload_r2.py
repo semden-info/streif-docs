@@ -34,6 +34,17 @@ for f in files:
         print(f"  {done}/{len(files)}")
 print("DONE")
 
+# P18: manifest.json — окремо, БЕЗ gzip (малий; свіжіший cache). Має лежати в тому ж каталозі TILES.
+mf = os.path.join(TILES, "manifest.json")
+if os.path.exists(mf):
+    s3.upload_file(mf, BUCKET, "manifest.json", ExtraArgs={
+        "ContentType": "application/json",
+        "CacheControl": "public, max-age=300, stale-while-revalidate=3600",
+    })
+    print("uploaded manifest.json (uncompressed)")
+else:
+    print(f"WARN: {mf} не знайдено — скопіюй manifest.json (uncompressed) у {TILES} перед заливкою")
+
 # verify: HEAD one object
 head = s3.head_object(Bucket=BUCKET, Key="area_3107_304.geojson")
 print(f"verify area_3107_304.geojson: {head['ContentLength']} bytes, "
