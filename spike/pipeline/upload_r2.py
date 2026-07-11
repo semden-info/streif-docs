@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Upload gzipped Streif tiles to Cloudflare R2 via S3 API (boto3). Creds from env."""
-import os, sys, glob, boto3
+import os, sys, glob, gzip, io, boto3
 from botocore.config import Config
 
 ACCOUNT = os.environ["R2_ACCOUNT_ID"]
@@ -18,7 +18,11 @@ s3 = boto3.client(
     config=Config(retries={"max_attempts": 5, "mode": "standard"}, s3={"addressing_style": "path"}),
 )
 
-files = sorted(glob.glob(os.path.join(TILES, "*.geojson")))
+# area_*.geojson тайли — вже передстиснені (README крок 4). tettsteder.geojson НЕ тут (не gzip-нутий
+# тим кроком) → виключаємо з цього glob і заливаємо окремо нижче (in-code gzip), інакше віддали б
+# нестиснений файл із заголовком Content-Encoding: gzip = битий на клієнті.
+files = sorted(f for f in glob.glob(os.path.join(TILES, "*.geojson"))
+               if os.path.basename(f) != "tettsteder.geojson")
 print(f"uploading {len(files)} tiles -> r2://{BUCKET}")
 extra = {
     "ContentType": "application/json",          # тип РОЗПАКОВАНОГО вмісту
@@ -44,6 +48,20 @@ if os.path.exists(mf):
     print("uploaded manifest.json (uncompressed)")
 else:
     print(f"WARN: {mf} не знайдено — скопіюй manifest.json (uncompressed) у {TILES} перед заливкою")
+
+# P20: tettsteder.geojson — межі поселень + per-tettsted лічильники. Gzip у коді (R2 сам не стискає;
+# ~520 KB → ~150 KB), Content-Encoding: gzip (HttpURLConnection на Android прозоро розпаковує).
+tf = os.path.join(TILES, "tettsteder.geojson")
+if os.path.exists(tf):
+    buf = io.BytesIO()
+    with gzip.GzipFile(fileobj=buf, mode="wb", compresslevel=9) as g:
+        g.write(open(tf, "rb").read())
+    s3.put_object(Bucket=BUCKET, Key="tettsteder.geojson", Body=buf.getvalue(),
+                  ContentType="application/json", ContentEncoding="gzip",
+                  CacheControl="public, max-age=300, stale-while-revalidate=86400")
+    print(f"uploaded tettsteder.geojson (gzip {len(buf.getvalue())//1024} KB)")
+else:
+    print(f"WARN: {tf} не знайдено — скопіюй tettsteder.geojson у {TILES} перед заливкою (P20)")
 
 # verify: HEAD one object
 head = s3.head_object(Bucket=BUCKET, Key="area_3107_304.geojson")

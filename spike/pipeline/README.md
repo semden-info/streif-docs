@@ -37,17 +37,27 @@ POST https://nedlasting.geonorge.no/api/order
 ```
 Walkable-фільтр (typeVeg-літерали з ЖИВОГО файлу): pedestrian `fortau/gangveg/gsv/gangfelt/trapp` завжди + `bilveg/kanalveg/rkj` крім vegkategori E/R; виключити `bilferje`. ⚠️ `sti`/`traktorveg` (стежки) в Elveg ще накочуються (2026–2027) → провал recall по неформальних стежках, тому `--osm-bridge` (нижче) або пізніше Turrutebasen.
 
-### 3. Join → тайли (Matrikkelen + OSM-геометрія + Elveg-eligibility → 0.02°)
+### 2c. SSB Tettsteder — межі поселень для per-tettsted Coverage-% (P20)
+Coverage-% рахується від **поточного tettsted** (міського поселення), а не від комуни (P18 давав завелику area = 22 645 буд. обох комун → «0,7%» абстрактне). Джерело — **SSB Tettsteder** (власник Statistisk sentralbyrå, ліцензія **NLOD** — відкрита, атрибуція; **не** буквально CC-BY, але сумісна). Датасет **НЕ віддається через Geonorge nedlasting** (capabilities 404) — SSB хостить власний WFS:
 ```
-python build_tiles.py OUTDIR REF_LAT [--elveg=e1.gml,e2.gml] [--osm-bridge] GML1 OSM1 [GML2 OSM2 ...]
-# продакшн (Volda+Ørsta, Elveg + OSM-bridge — Варіант B, D31):
+python fetch_tettsteder.py tettsteder.gml           # default рік=2025, bbox=Volda/Ørsta регіон
+# WFS https://kart.ssb.no/api/mapserver/v1/wfs/tettsteder, тип ms:tettsted_2025 (щорічний), GML EPSG:4326
+```
+Кожен tettsted несе стабільний `tett_nr` (SSB tettstednummer) + `tettstedsnavn` + `befolkning_tettsted`. Geometry MultiSurface (без дірок). Атрибуція межі — **© Statistisk sentralbyrå**.
+
+### 3. Join → тайли (Matrikkelen + OSM-геометрія + Elveg-eligibility + Tettsteder → 0.02°)
+```
+python build_tiles.py OUTDIR REF_LAT [--elveg=e1.gml,e2.gml] [--osm-bridge] [--tettsteder=t.gml] [--region=…] GML1 OSM1 [GML2 OSM2 ...]
+# продакшн (Volda+Ørsta, Elveg + OSM-bridge — Варіант B, D31; + Tettsteder P20):
 python build_tiles.py ./tiles 62.15 \
   --elveg=1577NVDBVegnettPluss.gml,1520NVDBVegnettPluss.gml --osm-bridge \
+  --tettsteder=tettsteder.gml --region="Volda+Ørsta" \
   volda.gml osm_volda.json  orsta.gml osm_orsta.json
-# без --elveg → D6 рахується з OSM-highways (dogfood-фолбек)
+# без --elveg → D6 рахується з OSM-highways (dogfood-фолбек); без --tettsteder → P20-файл не емітиться
 ```
-Вихід: `area_{la}_{lo}.geojson` (props: `building_id`=`m<bygningsnummer>`|`w<osmid>`, `type` [6 категорій], `accessible` [D6]) + `manifest.json`.
+Вихід: `area_{la}_{lo}.geojson` (props: `building_id`=`m<bygningsnummer>`|`w<osmid>`, `type` [6 категорій], `accessible` [D6], **`tettsted_id`** [P20, tett_nr або відсутній=сільське]) + `manifest.json` (P18, per-регіон) + **`tettsteder.geojson`** (P20: межі + per-tettsted `total`/`accessible`/`byType`; лише data-backed поселення).
 Ключ тайла ЗБІГАЄТЬСЯ з `AreaCache.keyFor` (0.02°) — тайли лягають у наявний on-demand механізм.
+⚠️ **Після регенерації Denis має очистити кеш зон на девайсі** (`filesDir/areas`) — старі кешовані тайли без `tettsted_id` інакше лишаться (D24: «раз стягнули — назавжди»).
 **A/B-гейт перед перезаливкою:** `elveg_ab.py` — порівнює accessible% Elveg-vs-OSM на Volda, ловить регресію (будинок, доступний лише пішо-стежкою, що OSM ловить, а Elveg — ні).
 
 ### 4. Gzip (R2 сам НЕ стискає — передстискаємо; bash-цикл повільний на Windows → Python)
@@ -59,9 +69,11 @@ python -c "import gzip,glob,os,shutil; os.makedirs('tiles-gz',exist_ok=True); [s
 Cloudflare: R2 → Create bucket `streif-tiles` (Location hint WEUR, Standard) → Settings → Public Development URL → Enable.
 API-token: Account API Token, Object Read & Write, scope=streif-tiles → Access Key + Secret + Account ID.
 ```
+cp tiles/manifest.json tiles/tettsteder.geojson tiles-gz/   # обидва P18+P20-файли поруч із передстисненими тайлами
 R2_ACCOUNT_ID=... R2_ACCESS_KEY=... R2_SECRET_KEY=... \
   python upload_r2.py ./tiles-gz
-# ставить Content-Type: application/json, Content-Encoding: gzip, Cache-Control
+# area_*.geojson: Content-Encoding: gzip (передстиснені); manifest.json: uncompressed;
+# tettsteder.geojson: gzip у коді upload_r2 (виключений з area-glob, щоб не віддати битим)
 ```
 
 ### 6. Увімкнути в застосунку

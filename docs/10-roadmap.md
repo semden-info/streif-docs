@@ -62,7 +62,7 @@
 ## 8. Фаза 5 — MVP-1
 
 - **`08`:** фінальні кольори за типами + вторинний сигнал (іконка/патерн toggle); **візуальна мова D28** (контурні іконки колір-за-типом, declutter, collect-unlock без score); **принцип самопояснювальності** (progressive disclosure — будь-яке число/area пояснює себе за ≤2 тапи, `08` §1).
-- **`04`:** метрики Coverage/Variety/Discovery, колекції, бейджі, святкування віх, тижневий підсумок. **Coverage-% = per tettsted** (SSB Tettsteder) з видимим кордоном на мапі (**P20**; пайплайн: tettsted-межі + per-tettsted лічильники + boundary-GeoJSON, розширює P18).
+- **`04`:** метрики Coverage/Variety/Discovery, колекції, бейджі, святкування віх, тижневий підсумок. **Coverage-% = per tettsted** (SSB Tettsteder) з видимим кордоном на мапі (**P20** ✅ пайплайн+Android реалізовано 2026-07-11, device-верифікація pending; tettsted-межі + per-tettsted лічильники + boundary-GeoJSON, розширює P18).
 - Onboarding ah-ha (+ **deferred auth D26**: пропонувати збереження прогресу після розкриття частини); повна локалізація bm/nn/en.
 - **Орієнтація мапи «bearing-up» (P17)** — опційний перемикач, **дефолт north-up**; чиста реалізація через MapLibre `LocationComponent` (напрямлений puck + режими камери, прибирає ручний me-шар/`easeCamera`). Швидкий спайк можливий раніше як експеримент. Відкрите: компасний heading vs GPS-course (`DECISIONS.md` P17).
 - **Вихід:** приємний dogfood (`09` §4).

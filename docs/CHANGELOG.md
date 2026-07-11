@@ -7,6 +7,20 @@
 
 ---
 
+## 2026-07-11 — P20: Coverage = поточний tettsted (пайплайн + Android)
+
+**Coverage-% тепер рахується від поточного tettsted** (міського поселення, у якому ти зараз), а НЕ від комуни (P18: Volda+Ørsta = 22 645 буд. → «0,7% of area» абстрактне, area завелика — польова скарга Дениса). Кордон поточного tettsted малюється **лінією на мапі** (area стає ВИДИМОЮ, не словом — принцип самопояснювальності `08` §1). Поза будь-яким tettsted (село/між містами) = «**поза містом**» без % (варіант a, Денис 2026-07-06).
+
+**Data-спайк SSB Tettsteder (де-ризиковано ✅):** Geonorge UUID `173f4a15-…`, власник **Statistisk sentralbyrå**. **⚠️ Ліцензія NLOD** (відкрита, атрибуція — **не** буквально CC-BY, як припускалось; сумісна; кордони — окремий файл, не в ODbL-тайлах будинків) → додано **© SSB** в атрибуцію. **⚠️ Не через Geonorge nedlasting** (capabilities 404) — SSB віддає власним **WFS** `kart.ssb.no/api/mapserver/v1/wfs/tettsteder`, тип `ms:tettsted_2025` (щорічний), GML **EPSG:4326** напряму. Стабільний id = **`tett_nr`** (SSB tettstednummer) + `tettstedsnavn`. Volda (6071, 7169 осіб) + Ørsta (6081, 7733) покриті; геометрія без дірок.
+
+**Пайплайн (`spike/pipeline/`):** `fetch_tettsteder.py` (WFS-GML per bbox) + `build_tiles.py --tettsteder=` → point-in-polygon приписує кожну будівлю до tettsted (тег **`tettsted_id`** на фічі; поза всіма = без тега) + емітить **`tettsteder.geojson`** (межі MultiPolygon + per-tettsted `total`/`accessible`/`byType`; лише data-backed поселення — кожен намальований кордон покривний). `upload_r2.py` заливає boundary-файл (in-code gzip; виключений з area-glob). Верифіковано на реальному tettsteder-GML (Volda→6071, Ørsta→6081, rural→None) + синтетичному end-to-end (3/4 буд. у tettsted).
+
+**Android (`no.streif.spike`):** `TettstedIndex` (CMP-clean, org.json: PIP-`locate` + per-tettsted тотали) + `CdnGeoJsonAreaSource.fetchTettsteder` (кеш+CDN, парс off-main); `TrackingRepository` — **чисельник per-tettsted із тегу `tettsted_id`** (index-незалежний) + `currentTett` (GPS→PIP) + `stats()` розширено; `Stats` (+tett-поля, `tettCoveragePct`); `StatusPlate` — «Revealed N (X% від <tettsted>)» / «**поза містом**» (гейт `tettLocated` — до першого фіксу fallback на P18/local) / P18-city / local; `MapController` — **два line-layer** (`tett-all` пунктир усі поселення регіону + `tett-current` насичений поточний; feature-state на Android нема → окреме джерело). Fallback шарами: tettsted → комуна (P18) → локально. Компіляція ✅ + JVM-тести ✅ (`TettstedIndexTest`: parse/locate/counts).
+
+**⚠️ Статус верифікації:** логіку пайплайну, Kotlin-юніт-тести й компіляцію верифіковано; **на пристрої НЕ перевірено** (Pixel через adb — `unauthorized`, Денис має підтвердити USB-debug) + **реальні per-tettsted числа — після регенерації+заливки Дениса** (як P18; нема вхідних Matrikkelen/OSM/Elveg локально + R2-creds). Після регену **очистити `filesDir/areas`** — старі кешовані тайли без `tettsted_id` інакше не рахуватимуться в чисельник (D24 «раз стягнули — назавжди»). Гілки **НЕ злиті в main** — чекають device-верифікації + рішень Дениса по відкритих питаннях (стиль кордону, per-tettsted vs глобальний лічильник, hint найближчого). Реалізує `P20` (розширює `P18`, закриває `P3`).
+
+---
+
 ## 2026-07-11 — 04-gamification v0.4: інтегровано P19–P25 (обидві паралельні сесії)
 
 Після злиття двох паралельних гейміфікація-гілок — оновлено канонічний план `04-gamification.md`, щоб відображав **усі** P19–P25:

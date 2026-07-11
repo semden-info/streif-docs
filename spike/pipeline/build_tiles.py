@@ -17,6 +17,7 @@ CELL = 40.0          # grid cell (m) for highway proximity
 
 APP = "{http://skjema.geonorge.no/SOSI/produktspesifikasjon/Matrikkelen-Bygningspunkt/20211101}"
 GML = "{http://www.opengis.net/gml/3.2}"
+MS = "{http://mapserver.gis.umn.edu/mapserver}"   # SSB Tettsteder WFS feature ns (P20)
 
 # ---------- Matrikkelen bygningstype -> Streif 6 categories ----------
 def category(code):
@@ -176,15 +177,72 @@ def pip(x, y, ring):
         j = i
     return inside
 
+# ---------- SSB Tettsteder (P20): межі поселень для per-tettsted Coverage-% ----------
+def _lname(tag):
+    return tag.rsplit("}", 1)[-1]
+
+def parse_tettsteder(path):
+    """SSB Tettsteder WFS-GML → [{'id','name','pop','polys':[(ring,bbox)...]}].
+    `ring` = зовнішнє кільце [(lon,lat)...] (дірок нема — verified data-спайк 2026-07-11).
+    Осі: файл з fetch_tettsteder.py — EPSG:4326 (posList «lat lon») → міняємо на (lon,lat).
+    Фолбек: значення схожі на UTM (|coord|>400) → репроєкція 25833→4326 (на випадок іншого srsName)."""
+    # визначити систему координат по першому posList
+    utm = False
+    for _ev, el in ET.iterparse(path, events=("end",)):
+        if _lname(el.tag) == "posList" and el.text:
+            v = el.text.split()
+            if v and (abs(float(v[0])) > 400 or abs(float(v[1])) > 400):
+                utm = True
+            el.clear(); break
+        el.clear()
+    tr = Transformer.from_crs("EPSG:25833", "EPSG:4326", always_xy=True) if utm else None
+
+    def to_lonlat(a, b):
+        # geo4326: posList = (lat, lon) → (lon, lat); utm33: (easting, northing) → transform
+        return tr.transform(a, b) if tr else (b, a)
+
+    tett = []
+    for _ev, el in ET.iterparse(path, events=("end",)):
+        ln = _lname(el.tag)
+        if ln.startswith("tettsted_") and el.tag.startswith(MS):
+            tid = name = pop = ""
+            polys = []
+            for ch in el.iter():
+                cn = _lname(ch.tag)
+                if cn == "tett_nr": tid = (ch.text or "").strip()
+                elif cn == "tettstedsnavn": name = (ch.text or "").strip()
+                elif cn == "befolkning_tettsted": pop = (ch.text or "").strip()
+                elif cn == "posList" and ch.text:
+                    nums = ch.text.split()
+                    ring = [to_lonlat(float(nums[i]), float(nums[i + 1])) for i in range(0, len(nums) - 1, 2)]
+                    if len(ring) >= 4:
+                        xs = [p[0] for p in ring]; ys = [p[1] for p in ring]
+                        polys.append((ring, (min(xs), min(ys), max(xs), max(ys))))
+            if tid and polys:
+                tett.append({"id": tid, "name": name,
+                             "pop": int(pop) if pop.isdigit() else 0, "polys": polys})
+            el.clear()
+    return tett
+
+def locate_tettsted(lon, lat, tett):
+    """Який tettsted містить точку (lon,lat)? bbox-відсів → PIP. None = поза всіма (сільське/між містами)."""
+    for t in tett:
+        for ring, bb in t["polys"]:
+            if bb[0] <= lon <= bb[2] and bb[1] <= lat <= bb[3] and pip(lon, lat, ring):
+                return t["id"]
+    return None
+
 def main():
     # usage: build_tiles.py OUTDIR REF_LAT [--elveg=e1.gml,e2.gml] [--osm-bridge] GML1 OSM1 [GML2 OSM2 ...]
     #   --elveg=…    : D6-eligibility з Kartverket Elveg (замість OSM highways). Кома-розділені GML.
     #   --osm-bridge : додати OSM footway/path/track до Elveg (закрити sti-провал; повертає ODbL по вег-шару).
-    elveg_paths, osm_bridge, region, rest = [], False, "", []
+    #   --tettsteder=… : SSB Tettsteder GML (P20) — межі поселень для per-tettsted Coverage-% + boundary-шар.
+    elveg_paths, osm_bridge, region, tett_path, rest = [], False, "", "", []
     for a in sys.argv[1:]:
         if a.startswith("--elveg="): elveg_paths = [p for p in a[len("--elveg="):].split(",") if p]
         elif a == "--osm-bridge": osm_bridge = True
         elif a.startswith("--region="): region = a[len("--region="):]   # P18: назва регіону в manifest
+        elif a.startswith("--tettsteder="): tett_path = a[len("--tettsteder="):]   # P20
         else: rest.append(a)
     outdir, ref_lat = rest[0], float(rest[1])
     pairs = rest[2:]
@@ -210,6 +268,11 @@ def main():
     print(f"COMBINED: Matrikkelen={len(mats)} buildings={len(buildings)} | eligibility={src}: {len(highways)} ліній")
 
     accessible = compute_accessible(buildings, highways, ref_lat)
+
+    # P20: межі SSB Tettsteder — приписуємо будівлю до поселення (centroid PIP → tettsted_id)
+    tett = parse_tettsteder(tett_path) if tett_path else []
+    if tett_path:
+        print(f"  tettsteder: {len(tett)} поселень у файлі ({os.path.basename(tett_path)})")
 
     # spatial index of building bboxes (0.002deg ~200m cells)
     GC = 0.002
@@ -247,9 +310,13 @@ def main():
             fid = "m" + m[0]; ftype = m[1]; enriched += 1
         else:
             fid = bid; ftype = ot
+        props = {"building_id": fid, "type": ftype, "accessible": accessible.get(bid, True)}
+        if tett:                                                     # P20: тег поселення (Android читає прямо з фічі)
+            tid = locate_tettsted(cxlon, cylat, tett)
+            if tid: props["tettsted_id"] = tid                       # поза всіма tettsteder → без тега (сільське)
         feat = {"type": "Feature",
                 "geometry": {"type": "Polygon", "coordinates": [[[round(x, 7), round(y, 7)] for x, y in ring]]},
-                "properties": {"building_id": fid, "type": ftype, "accessible": accessible.get(bid, True)}}
+                "properties": props}
         la = round(cylat / TILE); lo = round(cxlon / TILE)
         tiles.setdefault((la, lo), []).append(feat)
 
@@ -280,6 +347,40 @@ def main():
               ensure_ascii=False, indent=1)
     print(f"manifest: region='{region}' total={tot_all} accessible={acc_all} "
           f"byType={ {k: v['total'] for k, v in byType.items()} }")
+
+    # P20: per-tettsted лічильники + boundary-GeoJSON (Android: %-Coverage поточного tettsted + видимий кордон).
+    # Емітимо лише tettsteder, у яких Є будівлі (data-backed) — щоб кожен намальований кордон був покривним
+    # (не «0% Ulsteinvik», для якого ми не тягнули будинків). Сусіди без даних просто не малюються.
+    if tett:
+        tname = {t["id"]: t["name"] for t in tett}; tpop = {t["id"]: t["pop"] for t in tett}
+        tc = {}   # tid -> {name,pop,total,accessible,byType:{cat:{total,accessible}}}
+        for feats in tiles.values():
+            for f in feats:
+                p = f["properties"]; tid = p.get("tettsted_id")
+                if not tid: continue
+                e = tc.setdefault(tid, {"name": tname.get(tid, ""), "pop": tpop.get(tid, 0),
+                                        "total": 0, "accessible": 0,
+                                        "byType": {c: {"total": 0, "accessible": 0} for c in CATS}})
+                d = e["byType"].setdefault(p["type"], {"total": 0, "accessible": 0})
+                e["total"] += 1; d["total"] += 1
+                if p["accessible"]: e["accessible"] += 1; d["accessible"] += 1
+        feats_out = []
+        for t in tett:
+            c = tc.get(t["id"])
+            if not c: continue
+            coords = [[[[round(x, 6), round(y, 6)] for x, y in ring]] for ring, _bb in t["polys"]]
+            feats_out.append({"type": "Feature",
+                "geometry": {"type": "MultiPolygon", "coordinates": coords},
+                "properties": {"tett_nr": t["id"], "name": c["name"], "pop": c["pop"],
+                               "total": c["total"], "accessible": c["accessible"], "byType": c["byType"]}})
+        tfc = {"type": "FeatureCollection", "region": region, "generated": manifest["generated"],
+               "attribution": "© Statistisk sentralbyrå (Tettsteder, NLOD)", "features": feats_out}
+        json.dump(tfc, open(os.path.join(outdir, "tettsteder.geojson"), "w", encoding="utf-8"),
+                  ensure_ascii=False, separators=(",", ":"))
+        assigned = sum(c["total"] for c in tc.values())
+        top = {c["name"]: c["total"] for c in sorted(tc.values(), key=lambda x: -x["total"])[:8]}
+        print(f"tettsteder (P20): {len(feats_out)} з даними -> tettsteder.geojson {top}; "
+              f"{assigned}/{len(binfo)} буд. у tettsted, {len(binfo)-assigned} поза (сільське)")
 
     acc_n = sum(1 for v in accessible.values() if v)
     print(f"joined: {matched}/{len(buildings)} buildings enriched w/ Matrikkelen ({100*enriched/max(len(buildings),1):.1f}%)")
