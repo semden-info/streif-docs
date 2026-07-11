@@ -7,6 +7,21 @@
 
 ---
 
+## 2026-07-11 — Гейміфікація: «спокійний кор + опційний шар» (D33) + брейнсторм структуровано
+
+**Обговорення нових ідей гейміфікації Дениса** (`04-gamification2.md`: Обʼєм = Площа×Висота, rarity-scoring, 3D-діорама, типи-як-точки-дій, історичний шар, UGC) + незалежний cross-model review (codex gpt-5.4, read-only), звірено з першоджерелами (D13/D20/D2/`01`/`03`). **Проблема:** частина ідей повертала те, що «спокійна» лінія свідомо відкинула — **D13/S6** (без score/формул/вагового difficulty) і **D20** (без тиску). **Рішення (з Денисом):** не обирати «спокій vs гейміфікація», а **спокійний кор (дефолт, MVP) + опційний шар, що вмикається** (post-MVP) — «регулятор глибини», не форк.
+
+**Зафіксовано в `DECISIONS.md`:**
+- **D33** (accepted) — кор + opt-in шар; крос-режимні інваріанти: безпека **не** opt-in, без втрати прогресу (D30), без streak/FOMO, кор повний.
+- Нотатка-уточнення до **D13** — керує дефолтом; rarity/difficulty **ніколи не множник**, Merkehåndboka лише описова/safety-мітка; безпека крос-режимно.
+- **P21** Обʼєм — ціль-так/формула-ні (баланс через complementary-колекції + бейдж «Balansert utforsker»; мультиплікативна формула відхилена — вироджений випадок «місто-only → 0» несправедливо занулює тих, хто збирає лише один тип об'єктів) · **P22** діорама 2D-first (справжнє 3D лише після прототипу+retention; native-OOM ризик D32) · **P23** типи-як-точки-дій (гард: без хард-гейту за рідкісним типом, тактовно/безпечно) · **P24** новизна маршруту (інструментує ★-метрику D2; залежить від P6) · **P25** історичний шар (Riksantikvaren/Nasjonalbiblioteket/Kartverket historiske). Ідея «**3 герої**» — відкладено (буквальні ваги = score + ризик колії проти D2).
+
+**Доки синхронізовано:** `04-gamification.md` → **v0.3** (кор §1–10 + нова **§11 «Опційний шар»** з гардами rarity/safety); `03 §E`, `09 §5` (opt-in шар у post-MVP), `06` (нова §12 — джерела rarity-проксі/історії), `07 §4` (агрегація частоти візитів з min-user-threshold), `AGENTS.md` (буліт гейміфікації + відкриті точки).
+
+**Брейнсторм `04-gamification2.md` влито в канон.** ⚠️ Файл був **untracked** (git не зберігає його історію) — зміст повністю перенесено в `04`/`06`/`07`/`DECISIONS`; сам файл прибрати при злитті гілки в `main` (чекає ok Дениса). Нічого не закомічено — docs-правки в гілці `claude/amazing-goldstine-41dcc3`.
+
+---
+
 ## 2026-07-06 — P18: «X з Y у місті» + city Coverage-% (region-manifest)
 
 **Тап-по-іконці типу в плашці тепер показує «X of Y revealed»** (Y = усього типу в місті), а головний Coverage-% рахується **«від міста»** (досяжних із пішої мережі), не «від завантаженого поблизу» (on-demand D24 знав лише завантажені тайли).
@@ -42,7 +57,7 @@
 **Матчинг (крос-девайс, ground truth = 53 мітки з Samsung):**
 - **Recall 100% на ОБОХ пристроях** (Pixel відтворив усі 45 «correct»). Залізобетонно.
 - **Precision 87%** (7 хибних із 52). Крос-девайс збіг розкриттів 89% (Jaccard). 5 із 7 хибних — систематичні (обидва телефони) → алгоритм, не GPS-шум; 2 — GPS-шум.
-- **КЛЮЧОВИЙ негативний результат (P2): жоден поріг хибні не відсіче.** Перевірено відстань стіни (TP до 17 м, FP 0.2-17.4 м — перекриваються) І GPS-accuracy на момент reveal (TP 3-5 м, FP 4-7 м — не розділяються). Старт-дрейф `m179729261` (твій «3-й поверх»): стіна **0.2 м** + accuracy **4-7 м** = за всіма сигналами не відрізнити від легітимного. Легітимний старт-TP `m179729237` мав ГІРШУ точність (8-24 м, cold-start).
+- **КЛЮЧОВИЙ негативний результат (P2): жоден поріг хибні не відсіче.** Перевірено відстань стіни (TP до 17 м, FP 0.2-17.4 м — перекриваються) І GPS-accuracy на момент reveal (TP 3-5 м, FP 4-7 м — не розділяються). Старт-дрейф `m179729261` (Денисів «3-й поверх»): стіна **0.2 м** + accuracy **4-7 м** = за всіма сигналами не відрізнити від легітимного. Легітимний старт-TP `m179729237` мав ГІРШУ точність (8-24 м, cold-start).
 - **Висновок: precision 87% — біля межі GPS-only матчингу.** Пороги НЕ змінюємо (втратимо 100% recall заради 1-2 нерозрізнюваних будинків). Реальний приріст precision = кращі сигнали (map-matching «мій бік дороги» / сенсор-фьюжн) → **post-MVP** (пов'язано з відкоченим D6 side-aware). *Старт-гард розглянуто й ВІДХИЛЕНО — дані спростували (accuracy не розділяє).*
 
 **Батарея (Stage C — Pixel, екран-off, кишеня = чистий замір):**
@@ -79,7 +94,7 @@
 
 **A/B-гейт (обов'язковий перед перезаливкою, `spike/pipeline/elveg_ab.py`):** на Volda Elveg-only дав 82.0% accessible vs OSM 80.5%, але **регресував 309 буд.** (hytte 106 / outbuilding 113 — саме trail-reachable, підтверджує sti-провал). → **обрано Варіант B: Elveg + OSM-footpath-bridge** — нуль регресії, accessible регіону **83→87%**. Обґрунтування: тайл **і так ODbL** (геометрія OSM у Варіанті 1), тож bridge не додає ліцензійної ціни зараз; прибрати коли геометрія→FKB І Elveg домігрує стежки (або +Turrutebasen для природного шару).
 
-**Реалізація:** `parse_elveg` (Veglenke→walkable-лінії, 5973→4326, той самий тип що OSM highways — `compute_accessible` НЕ змінено) + прапорці `--elveg=`/`--osm-bridge` у `build_tiles.py`; manifest-атрибуція += NVDB Vegnett Pluss. Перегенеровано Volda+Ørsta = 416 тайлів (1.3 MB gzip). Клієнтська атрибуція «© Kartverket · © OpenStreetMap» уже покриває (Kartverket = Matrikkelen+Elveg).
+**Реалізація:** `parse_elveg` (Veglenke→walkable-лінії, 5973→4326, той самий тип що OSM highways — `compute_accessible` НЕ змінено) + прапорці `--elveg=`/`--osm-bridge` у `build_tiles.py`; manifest-атрибуція += NVDB Vegnett Pluss. Перегенеровано Volda+Ørsta = 416 тайлів (1.3 MB gzip; ⚠️ пор. 2.2 MB у записі CC-BY-пайплайну — різні заміри/набори, звірити при потребі). Клієнтська атрибуція «© Kartverket · © OpenStreetMap» уже покриває (Kartverket = Matrikkelen+Elveg).
 
 **⚠️ Відома розбіжність pipeline-vs-runtime:** offline-CDN-тайли несуть Elveg-eligibility; runtime on-demand (Overpass, `USE_CDN=false`) на девайсі й далі рахує accessible з OSM-highways (Elveg там немає). Вирівняється, коли Elveg-мережа теж поїде pre-hosted.
 
@@ -121,7 +136,7 @@ TextView, поряд із логотипом MapLibre). Verified на прист
 **Найбільша віха: тестові Overpass-дані замінено офіційним CC-BY-пайплайном, тайли живі на CDN.** Реалізує D31 (обрано Варіант 1: OSM-геометрія ODbL + Matrikkelen-збагачення).
 
 **Крок 0.1 — верифікація join (головний ризик Варіанту 1) ✅.** Спайк point-in-polygon (Matrikkelen `representasjonspunkt` → OSM-полігон): Volda **98.5%** будинків збагачено `bygningsnummer`+тип; лише 14 полігонів з >1 точкою. Ørsta нижче (**84%**) — бо OSM має БІЛЬШЕ об'єктів (11833) ніж Matrikkelen (10435) → стеля join 88%; решта лишає OSM-тип-фолбек. Не баг.
-- *Розкладка типів (офіційна Matrikkelen `bygningstype` → 6 категорій Streif):* **outbuilding 50%** (гаражі/naust/fjøs — половина всіх «будинків»!), housing 34%, hytte 11%, public 3%, other 2%, sacral 0.2%. Мапінг кодів: 161-172→hytte, 181-183/231-249/431-449→outbuilding, 671-679→sacral (66x — то культура/diskotek, НЕ церкви), решта 1xx→housing, 3xx-8xx→public, 2xx→other. **⚠️ Продуктове питання (відкрите):** чи розкривати гаражі нарівні з житлом — рішення відкладено до польових цифр (P10/retention).
+- *Розкладка типів (офіційна Matrikkelen `bygningstype` → 6 категорій Streif):* **outbuilding 50%** (гаражі/naust/fjøs — половина всіх «будинків»!), housing 34%, hytte 11%, public 3%, other 2%, sacral 0.2%. Мапінг кодів: 161-172→hytte, 181-183/231-249/431-449→outbuilding, 671-679→sacral (⚠️ сусідні коди 66x — культура/diskotek — НЕ церкви, у sacral не потрапляють), решта 1xx→housing, 3xx-8xx→public, 2xx→other. **⚠️ Продуктове питання (відкрите):** чи розкривати гаражі нарівні з житлом — рішення відкладено до польових цифр (P10/retention).
 
 **Пайплайн `spike/pipeline/` (offline CLI):**
 - `fetch_osm.py` — OSM будинки+дороги per-kommune (Overpass area-query по `ref`; ~12k буд./kommune, ~17 MB JSON).
@@ -337,6 +352,8 @@ TextView, поряд із логотипом MapLibre). Verified на прист
 
 ## Архітектура as-built (Spike-2, Android `no.streif.spike`)
 
+> ⚠️ **Стан на Spike-2.** На MVP-0 персистенція вже на **Room (D11)**, `SessionStore` не вживається (див. запис 2026-07-04). Актуальна архітектура — у записах MVP-0 вище + код.
+
 | Компонент | Відповідальність | Ключові рішення |
 |---|---|---|
 | `MainActivity` | UI (карта+кнопка+статус), режими walk/perf, дозволи, камера, wiring | D7 (native MapView), C1 (no re-init live-сесії) |
@@ -346,7 +363,7 @@ TextView, поряд із логотипом MapLibre). Verified на прист
 | `ActivityGate` | vehicle/bike-фільтр (AR + швидкісний гістерезис) | D5, консервативно (dwell) |
 | `BuildingStore` | in-memory bbox-grid, інкрементальний+thread-safe, **edge+centroid** (`candidatesPoint`) | **D25/D25.1** (edge-eligibility до контуру + центроїд-дист для тайминга), D24, локальна проєкція за широтою запиту |
 | `AreaLoader`+`AreaCache`+`AreaSource`/`OverpassAreaSource` | on-demand завантаження зон + кеш + парс OSM | **D24** (джерело за інтерфейсом → CC-BY CDN пізніше) |
-| `VisitStore`/`SessionStore`/`Stats` | збереження розкриттів (id,тип,час) + сесій + метрики | D13 (Coverage/Variety/Discovery), D11 (Room — на MVP-0) |
+| `VisitStore`/`SessionStore`/`Stats` | збереження розкриттів (id,тип,час) + сесій + метрики | D13 (Coverage/Variety/Discovery); D11 (Room ✅ на MVP-0; `SessionStore` не вживається) |
 | `DiagnosticRecorder` | сирий трек для тюнінгу (CSV) | **D14, gated `BuildConfig.DEBUG`** |
 | `MarkLog` + тап-обробник | ground-truth мітки ✓/✗ розкриття (CSV) для тюнінгу матчингу | **gated `BuildConfig.DEBUG`**; ідентифікація через `BuildingStore.nearest()`, не render-query |
 | `PerfProbe`/`PerfHarness` | перф-інструментація (frame-listener) + bench/combo/replay | D22 (HWUI не бачить SurfaceView) |

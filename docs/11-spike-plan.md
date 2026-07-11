@@ -1,6 +1,6 @@
 # Streif — Spike Plan (План технічних spike)
 
-> **Статус:** v0.2 — 2026-06-27 (Spike-1 ✅, Spike-2 Stage A/B ✅, C 🛠️; матчинг D25→D25.1)
+> **Статус:** v0.2 — **знімок на 2026-06-27** (Spike-1 ✅, Spike-2 Stage A/B ✅, C 🛠️-тоді). ⚠️ Це план spike, не поточний статус — **актуальний стан → `AGENTS.md`/`CHANGELOG.md`** (Stage C відтоді пройдено, матчинг D25→D25.1).
 > **Спирається на:** `05` §9, `09` §8, `10` §4, `DECISIONS.md` D17
 > **Призначення:** конкретний план технічних spike перед розробкою UI. Перехід із фази документації у фазу виконання. **Операційний стан → `spike/android-render/SPIKE-STATUS.md`; хронологія → `docs/CHANGELOG.md`.**
 
@@ -51,7 +51,7 @@
 
 ### 3. Симульований GPS
 - Записаний/синтетичний маршрут по Volda (lat/lon + час) — **replay** у застосунку.
-- Радіус-матчинг у застосунку → додавати будинки в overlay через `setGeoJson` (off-main-thread, `withSynchronousUpdate(true)`, viewport-scoped).
+- Радіус-матчинг у застосунку → додавати будинки в overlay через `setGeoJson` (off-main-thread, viewport-scoped; `withSynchronousUpdate` — план був `true`, але v2/D22 реверснув на **async `false`**, див. блок Spike-1 v2 нижче).
 - **Без** реального GPS / FGS / батареї.
 
 ### 4. Критерії успіху
@@ -85,7 +85,7 @@
 
 - ✅ **Stage A — трекінг-ядро:** FGS `type=location` (foreground-only) + Fused Location + збереження + walk-UI + diagnostic mode (D14, gated). Код пройшов 2 незалежні рев'ю (Claude + codex). *(`SPIKE2-WALKTEST.md`.)*
 - ✅ **Stage B — vehicle/bike-gate:** `ActivityGate` (Activity Recognition Transition API + швидкісний гістерезис, D5); **польово-валідовано** (98% швидких фіксів блоковано).
-- 🛠️ **Stage C — battery-gate:** інструментування готове (`battery.ps1` + battery-логування в `diag.csv`); **чекає чистої піщої прогулянки БЕЗ кабелю** (усі дотеперішні заміри зіпсовані зарядкою/повербанком) + дозамір на mid-range. *(`SPIKE2-BATTERY.md`.)*
+- 🛠️(тоді) **Stage C — battery-gate:** інструментування готове (`battery.ps1` + battery-логування в `diag.csv`); чекало чистої **пішої** прогулянки без кабелю (заміри зіпсовані зарядкою/повербанком) + дозамір на mid-range. *(Відтоді ПРОЙДЕНО — див. `AGENTS`/`CHANGELOG`; `SPIKE2-BATTERY.md`.)*
 - ✅ **Поверх Spike-2 (за польовими даними):** **D24 on-demand area download** (заміна фіксованого бандлу; Overpass-тест, ⚠️ CC-BY CDN перед релізом); **D25→D25.1 матчинг** — відстань до **КОНТУРУ** (eligibility ≤R_FAR=18, bbox-grid) + тайминг **closest-approach до ЦЕНТРОЇДА** («по середині будинку», `SLACK_CEN=2`, `MIN_EDGE_NEAR=3`, `moved`-guard); replay: розкриття ~3.3 м від центру. *(Заміна центроїд-радіуса D5; `05` §5.)*
 - **Gate:** надійно + батарея ок → **незалежне review (D23)** → MVP-0.
 
