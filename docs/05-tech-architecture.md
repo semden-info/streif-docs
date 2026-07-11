@@ -1,10 +1,10 @@
 # Streif — Tech Architecture (Технічна архітектура)
 
-> **Статус:** Чернетка v0.2 — 2026-06-21 (узгоджено з `DECISIONS.md` після Фази-0; враховано Spike-1)
+> **Статус:** Чернетка v0.3 — оновлено 2026-07-11 (Фаза-0 + Spike-1 v1/v2 (D22) + Spike-2 A/B; враховано **D24 on-demand**, **D25 edge-матчинг**, **D31 OSM+Matrikkelen / R2-CDN**; узгоджено з `DECISIONS.md`)
 > **Спирається на:** `01-product-vision.md`, `02-user-personas.md`, `03-feature-spec.md`, `04-gamification.md`
 > **Призначення:** технічна архітектура MVP (**місто-first, device-local**) + ADR. Технічні рішення **звірені з актуальною документацією** (MapLibre, Kartverket, Android, OSM, червень 2026) — ключові джерела в кінці. Детальні джерела/ліцензії даних → `06`; числові пороги матчингу як acceptance criteria → `09`.
 
-> ⚠️ **Звір виявив дві неточності в попередніх матеріалах — виправлено 2026-06-20** (`03` §A і CLAUDE.md «Дані»):
+> ⚠️ **Звірка виявила дві неточності в попередніх матеріалах — виправлено 2026-06-20** (`03` §A і CLAUDE.md «Дані»):
 > 1. **`feature-state` недоступний у MapLibre Native на Android** → `03` §A оновлено на двошаровий overlay-підхід.
 > 2. **FKB-Bygning не відкритий** (Norge digitalt) → CLAUDE.md «Дані» уточнено: відкриті — INSPIRE Buildings Core2d + Matrikkelen (CC-BY 4.0).
 
@@ -42,18 +42,20 @@
 
 **Ключове:** для першого білда **немає backend узагалі** — генерація tiles це **CLI-пайплайн без БД** (`building2osm`/GDAL → Tippecanoe → PMTiles). Laravel/PostGIS — лише потенційний v2 (sync/social, `DECISIONS.md` D12). Це і є device-local лінія.
 
+> ⚠️ **Поточний стан (оновлення 2026-07):** діаграма вище показує первісну build-time-bundle-модель. За **D24** доставка будинків тепер **on-demand** (зони навколо GPS на льоту, `AreaSource`), а PMTiles-бандл лишився лише для seed перф-режимів (§7). За **D31** продакшн-геометрія = **OSM (ODbL) + Matrikkelen** (не INSPIRE — не покриває регіон), тайли **живі на Cloudflare R2** (`CdnGeoJsonAreaSource`, `USE_CDN`). Деталі → `06` §3, `DECISIONS.md` D24/D31.
+
 ## 3. Android-клієнт
 
 **Стек:** Kotlin + Jetpack Compose · MapLibre GL Native · Room (+ BundledSQLiteDriver) · WorkManager + Foreground Service · Hilt (DI) · Retrofit + Kotlinx Serialization (для майбутнього sync).
 
 ### 3.1 ★ Рендеринг і зафарбовування (головна архітектурна корекція)
 
-`feature-state` — те, чим у MapLibre GL JS роблять per-feature розфарбування — **на MapLibre Native (Android) недоступне** (немає Java/Kotlin-біндингу; issue #1698 відкритий, `promoteId` теж не експонований). Тому будуємо **двошаровий дизайн** (рекомендація звіру):
+`feature-state` — те, чим у MapLibre GL JS роблять per-feature розфарбування — **на MapLibre Native (Android) недоступне** (немає Java/Kotlin-біндингу; issue #1698 відкритий, `promoteId` теж не експонований). Тому будуємо **двошаровий дизайн** (рекомендація звірки):
 
 1. **База будинків** — `FillLayer` поверх PMTiles vector-source, **статичний сірий**. Малює всі тисячі будинків дешево (GPU-friendly).
 2. **Visited-overlay** — окремий `GeoJsonSource`, що містить **лише відвідані** будинки; `FillLayer` фарбує їх **за типом** через `match`/`get` по property `type` (мала фіксована к-сть категорій — саме те, для чого `match` придатний). Оновлення — `setGeoJson()` при кожному новому візиті.
 
-**Правила продуктивності** (звір — `setGeoJson` re-парсить усю колекцію, partial-update API немає):
+**Правила продуктивності** (звірка — `setGeoJson` re-парсить усю колекцію, partial-update API немає):
 - Room = джерело істини відвіданих; overlay тримати **малим** (тільки visited, в ідеалі — лише ті, що в поточному viewport).
 - Оновлення `setGeoJson` — **поза main-thread**, debounce/батчинг; **ніколи** не передавати в overlay усе місто.
 - **Уникати** гігантського `match` по тисячах ID на базовому шарі (документований перф-регрес, повний reflow стилю на кожен апдейт).
@@ -86,7 +88,7 @@ Kartverket **WMTS raster**, шар **`topograatone` (сіра)** — `https://ca
 - **Тайминг = closest-approach до ЦЕНТРОЇДА (D25.1):** розкрити, коли відстань до **центроїда виросла на `SLACK_CEN` над мінімумом** (= проминув **середину** будинку, «по середині, коли йдеш уздовж» — польова вимога Дениса), **АБО** стіна ≤ `MIN_EDGE_NEAR` / всередині (впритул-байпас). Лише на реальному русі (`moved`-guard ≥ `MIN_MOVE` — проти GPS-джитера на місці). *Чому центроїд для тайминга:* edge-closest-approach (D25) спрацьовував на передньому **куті** будинку (зарано); центроїд лежить у центрі → розкриття лягає навпроти середини. *Чому не abreast-курс:* adversarial-рев'ю — курс на короткій базі шумний (крихкий); closest-approach course-free, помиляється «пізніше».
 - **Параметри (тунабельні, поточні):** `R_FAR=18 м` (eligibility) · `MIN_EDGE_NEAR=3 м` (впритул) · `SLACK_CEN=2 м` (центроїд-CA) · `ACC_MAX=30 м` (fail-closed). Replay-верифікація: розкриття медіана **3.3 м від центру** будинку (79% у межах 5 м).
 - **Vehicle-gate (D5/Stage B):** Activity Transition API (`ACTIVITY_RECOGNITION`) як **підказка** + швидкісний гістерезис; рахується ПЕРЕД матчингом. Польово-валідовано (98% швидких фіксів блоковано).
-- **Eligibility-фільтр (D6):** рахувати лише будинки, доступні з публічної пішої мережі — **ще НЕ реалізовано, на MVP-0**.
+- **Eligibility-фільтр (D6):** рахувати лише будинки, доступні з публічної пішої мережі — **✅ реалізовано** (dogfood-клієнт з OSM-highway 2026-07-04; продакшн-тайли — Elveg/NVDB Vegnett Pluss + OSM-bridge, D31). Тонке «мій бік vs через дорогу» — fast-follow (P2/D6).
 
 **Тунабельні параметри** (фіналізуються як acceptance criteria в `09`, `DECISIONS.md` P2): `R_FAR` (18↔20 на ширші вулиці) · `SLACK_CEN` · `MIN_EDGE_NEAR` · `ACC_MAX`. Тюнінг — через ✓/✗-маркування (debug) + `spike/fieldtest/analyze.py` на польових логах.
 
@@ -95,12 +97,14 @@ Kartverket **WMTS raster**, шар **`topograatone` (сіра)** — `https://ca
 ## 6. Модель даних
 
 - **Room (клієнт, джерело істини):** `buildings` (stable_id, type, layer, геометрія для overlay), `visits` (building_id, timestamp), агрегована статистика (% покриття, лічильники). Метрики накопичувальні (`04` §3).
-- **Build-time (CLI, без БД):** просторовий join INSPIRE-полігонів + Matrikkelen-типів через `ogr2ogr`/GDAL; схема даних спроєктована під 3 шари, наповнюємо лише місто. PostGIS — лише v2 (`DECISIONS.md` D12).
+- **Build-time (CLI, без БД):** просторовий join **OSM-полігонів (ODbL) + Matrikkelen-типів** (тип+bygningsnummer, CC-BY) — point-in-polygon, `spike/pipeline/` (D31; INSPIRE не покриває регіон). Схема даних під 3 шари, наповнюємо лише місто. PostGIS — лише v2 (`DECISIONS.md` D12).
 - **Що синхається пізніше (v2):** агрегований стан «розкрито», **не** треки (`07`).
 
 ## 7. Дані й tiles (pipeline)
 
 **Джерело будинків (звірено):**
+
+> ⚠️ **Оновлено (D31, 2026-07-04):** INSPIRE Core2d **не покриває наш регіон** (Sunnmøre — 0 будинків, verified) → **продакшн-геометрія = OSM self-host (ODbL) + Matrikkelen-збагачення** (тип+bygningsnummer, CC-BY); комбінований тайл = **ODbL**. INSPIRE/FKB — апгрейд ПОТІМ (покриття/публічний партнер, P4). Перелік нижче описує первісний INSPIRE-план — тримати як контекст.
 - **Геометрія — INSPIRE Buildings Core2d** (CC-BY 4.0, ~4.3 млн footprint-полігонів). *Тип НЕ з INSPIRE-полігонів — а з Matrikkelen (наступний пункт); виправлено після review.*
 - **Matrikkelen-Bygningspunkt** (CC-BY 4.0) — тип (`bygningstype`), але **точкова** геометрія; для enrich/валідації типу.
 - **`building2osm`** (CC0-інструмент) — робить join «INSPIRE полігони + Matrikkelen тип» → полігони+типи **CC-BY 4.0**. ⚠️ *Його WFS зараз не віддає полігони (тех-стек-пас) — тягнути per-kommune файли **прямо з Geonorge**, а з інструмента брати лише `building_types.csv`.*
@@ -135,15 +139,15 @@ Kartverket **WMTS raster**, шар **`topograatone` (сіра)** — `https://ca
 | ADR-02 | MapLibre GL Native (не Google/Mapbox) | open, vector, наші tiles, без per-map fee |
 | **ADR-03** | **Зафарбовування БЕЗ `feature-state`: двошарово** (сіра vector-база + visited GeoJSON-overlay, колір за типом через `match`) | `feature-state` недоступний на Native Android (#1698); visited у Room, overlay малий, off-main-thread |
 | ADR-04 | Room = джерело істини | offline-first |
-| ADR-05 | **Радіус-матчинг** для MVP (не street-corridor) | простіше, швидше; точність — пізніше |
-| **ADR-06** | Дані будинків: **INSPIRE Buildings Core2d (CC-BY 4.0)** канонічно (через `building2osm`); OSM — bootstrap; **не FKB** | чиста CC-BY-атрибуція vs ODbL share-alike |
-| ADR-07 | PMTiles **bundled-asset** у першому білді; CDN пізніше; MapLibre **13.x** | нуль інфри, офлайн; стабільність |
+| ADR-05 | **Edge-distance матчинг + closest-approach gate** (D25/D25.1, замінив центроїд-радіус D5; не street-corridor) | матч до контуру будинку; тайминг по closest-approach до центроїда; польово-верифіковано |
+| **ADR-06** | Дані будинків (продакшн, D31): **OSM-геометрія (ODbL) + Matrikkelen-тип (CC-BY)** → комбінований ODbL-тайл; INSPIRE не покриває регіон → **FKB/INSPIRE = апгрейд потім** (не FKB зараз — Norge digitalt) | реальне покриття Sunnmøre; апгрейд без зміни архітектури (P4) |
+| ADR-07 | Доставка будинків **on-demand** (D24, замінив bundled-asset S8); тайли **живі на Cloudflare R2** (D31); PMTiles-seed лише для перф-режимів; MapLibre **13.x** | масштаб під рух користувача; фіксований bbox-бандл не масштабувався |
 | ADR-08 | Base map Kartverket **WMTS `topograatone`** (raster) | сіра база під механіку; vector `landtopo` — `/test/`, пізніше |
 | ADR-09 | **Device-local MVP** без акаунтів; **foreground-only** location (без BACKGROUND_LOCATION) | швидший тест; поза Play-review; privacy |
 
 ## 11. Технічний скоуп MVP — що НЕ робимо
 
-Health Connect · Strava/Garmin sync · соц-backend/акаунти/sync · push-кампанії · природний шар + safety-GATE · `ACCESS_BACKGROUND_LOCATION` · CDN (поки bundled) · street-corridor матчинг. Каркас (схема даних під 3 шари) — так; реалізація — ні.
+Health Connect · Strava/Garmin sync · соц-backend/акаунти/sync · push-кампанії · природний шар + safety-GATE · `ACCESS_BACKGROUND_LOCATION` · street-corridor матчинг (повна eligibility). Каркас (схема даних під 3 шари) — так; реалізація — ні.
 
 ## 12. Відкриті точки / залежності + виявлені неточності
 
@@ -153,14 +157,14 @@ Health Connect · Strava/Garmin sync · соц-backend/акаунти/sync · pu
 
 **Відкриті точки:**
 - **Джерело будинків:** ✅ вирішено — **A: `building2osm` → CC-BY 4.0** (канонічний пайплайн); OSM — лише опційний bootstrap для першого spike.
-- **Пороги матчингу** (R, dwell) — підібрати на місцевості → `09`.
+- **Пороги матчингу** (`R_FAR`, `SLACK_CEN`, `MIN_EDGE_NEAR`, `ACC_MAX`) — фіналізувати на місцевості → `09` (P2).
 - **Кольори за типами будівель** → `08`.
 - **Точні Geonorge endpoint/UUID/формати** INSPIRE Core2d — підтвердити в Geonorge UI → `06`.
 - **Коли вмикати CDN і backend-sync** → `10`.
 
 ---
 
-### Ключові джерела звіру
+### Ключові джерела звірки
 
 - **feature-state gap (Native Android):** [maplibre-native #1698](https://github.com/maplibre/maplibre-native/issues/1698), [#185](https://github.com/maplibre/maplibre-native/issues/185); data-driven styling — [Android example](https://maplibre.org/maplibre-native/android/examples/styling/data-driven-style/).
 - **PMTiles (Android native ≥11.8.0):** [MapLibre Android PMTiles](https://maplibre.org/maplibre-native/android/examples/data/PMTiles/); [Tippecanoe](https://github.com/felt/tippecanoe).

@@ -1,6 +1,6 @@
 # Streif — Data Sources (Джерела даних)
 
-> **Статус:** Чернетка v0.2 — 2026-06-21 (узгоджено з `DECISIONS.md` після Фази-0)
+> **Статус:** Чернетка v0.3 — 2026-07-11 (узгоджено з `DECISIONS.md` після Фази-0; **v0.3:** +§12 джерела для гейміфікації/історії — post-MVP)
 > **Спирається на:** `01-product-vision.md`, `03-feature-spec.md`, `05-tech-architecture.md`
 > **Призначення:** реєстр джерел даних — ліцензії, атрибуції, доступ/endpoint-и, формати. Технічний пайплайн → `05`; приватність → `07`. Endpoint-и звірені (червень 2026); частина позначена «підтвердити в Geonorge UI / у Kartverket».
 
@@ -24,7 +24,8 @@
 | Matrikkelen-Bygningspunkt (тип) | Місто | CC-BY 4.0 | GML/FGDB/PostGIS, WFS | **MVP** |
 | `building2osm` (інструмент) | Місто | CC0 (код); дані CC-BY 4.0 | Python | **MVP** |
 | Kartverket WMTS `topograatone` (база) | Усі | CC-BY 4.0 | WMTS raster | **MVP** |
-| **Runtime Overpass (on-demand)** | Місто | ODbL ⚠ | Overpass API (bbox) | **тест D24** ⚠→CC-BY |
+| **R2-CDN тайли (on-demand, D31)** | Місто | ODbL (OSM-геом) + CC-BY (Matrikkelen) | Cloudflare R2 (GeoJSON/gzip) | **ЖИВИЙ дефолт** |
+| Runtime Overpass (on-demand фолбек) | Місто | ODbL ⚠ | Overpass API (bbox) | фолбек (`USE_CDN=false`), dogfood |
 | Turrutebasen | Стежки | CC-BY 4.0 | FGDB/GML/GPX/PostGIS, WMS | каркас |
 | høydedata DTM/DOM | Природа | CC-BY 4.0 | GeoTIFF/LAZ, OGC | каркас |
 | N50 (Høgdekurver) | Природа | CC-BY 4.0 | GDB/SQL/GML | каркас |
@@ -46,7 +47,7 @@
 
 **Тип — Matrikkelen-Bygningspunkt** (точки з `bygningstype`; **однозначно CC-BY 4.0**).
 - UUID `24d7e9d1-87f6-45a0-b38e-3447f8d7f9a1`; per-kommune GML-завантаження (`nedlasting.geonorge.no/.../MatrikkelenBygning/GML/...`); WFS `wfs.matrikkelen-bygningspunkt`; формати FGDB/GML/PostGIS/SOSI; оновлення щодня.
-- Коди `bygningstype` — стандарт **NS3457 / SSB Klass 31** (111 enebolig, hytte/fritidsbolig, 671 kirke …).
+- Коди `bygningstype` — стандарт **NS3457 / SSB Klass 31** (напр. enebolig, hytte/fritidsbolig, kirke; точні коди — за Klass 31).
 
 **З'єднання — `building2osm`** (NKAmapper, код **CC0**; дані на виході — **CC-BY 4.0**).
 - Тягне INSPIRE-полігони + Matrikkelen-точки + рівні адрес, робить spatial join (тип→полігон) і мапить `bygningstype → building=*`. ⚠️ **WFS у `building2osm` зараз не віддає полігони** (тех-стек-пас) — тягнути per-kommune файли **прямо з Geonorge**, а з інструмента брати лише `building_types.csv`.
@@ -54,18 +55,19 @@
 
 **OSM як bootstrap** — Volda/Ørsta вже 100% полігонів+типів (із тих самих Kartverket-даних), але **ODbL** (share-alike). Лише для швидкого spike, не канонічно.
 
-**★ Доставка — on-demand (`DECISIONS.md` D24).** MVP більше **не** фіксований бандл: застосунок тягне будинки в bbox навколо GPS **на льоту** (`AreaLoader` → локальний кеш). Джерело за інтерфейсом:
-- **Тест (зараз) = Runtime Overpass** (`overpass-api.de` та дзеркала; OSM/**ODbL**) — нуль інфри, але флакі (504/429) і share-alike-ліцензія. Прийнятно лише для dogfood.
-- **⚠️ Продакшн (обов'язково перед публічним релізом) = pre-hosted CC-BY** (INSPIRE Core2d + Matrikkelen) **на власному CDN** — надійність + масштаб для багатьох юзерів + чиста CC-BY-ліцензія. Тригер: `DECISIONS.md` **D24 / P4**, §11 нижче.
-- **NB (приватність):** on-demand надсилає **bbox-координати** (~3 км навколо користувача) до стороннього сервера — новий вихідний потік даних, задокументовано в `07`. Сирий GPS-трек усе одно не залишає пристрій (D14).
+**★ Доставка — on-demand (`DECISIONS.md` D24/D31).** MVP більше **не** фіксований бандл: застосунок тягне будинки в bbox навколо GPS **на льоту** (`AreaLoader` → локальний кеш). Джерело за інтерфейсом (`AreaSource`):
+- **✅ Продакшн-дефолт (зараз) = pre-hosted тайли на Cloudflare R2** (`CdnGeoJsonAreaSource`, `BuildConfig.USE_CDN=true`, D31): **Варіант 1 — OSM-геометрія (ODbL) + Matrikkelen-збагачення** (тип+bygningsnummer, CC-BY). Volda+Ørsta = 416 тайлів GeoJSON/gzip на сітці 0.02°. Комбінований тайл = **ODbL** (share-alike).
+- **Фолбек (`USE_CDN=false`) = Runtime Overpass** (`overpass-api.de` та дзеркала; OSM/ODbL) — нуль інфри, флакі (504/429); лише dogfood / зони поза pre-hosted покриттям.
+- **⚠️ Відкрито (P4): ліцензійне ОЧИЩЕННЯ ГЕОМЕТРІЇ** — замінити OSM-геометрію (ODbL) на чисту CC-BY (INSPIRE/FKB через покриття/публічного партнера) перед публічним релізом. Це **не** CDN-міграція (CDN уже живий), а зміна джерела геометрії.
+- **NB (приватність):** on-demand надсилає **bbox-координати** (~3 км навколо користувача) до стороннього сервера (R2/Overpass) — вихідний потік даних, задокументовано в `07`. Сирий GPS-трек усе одно не залишає пристрій (D14).
 
-**Атрибуція:** `© Kartverket` (CC-BY-джерело); поки тест на Overpass — також `© OpenStreetMap contributors` (ODbL).
+**Атрибуція:** комбінований тайл = ODbL → **`© OpenStreetMap contributors`** (обов'язково, доки геометрія OSM-походження) **+ `© Kartverket`** (Matrikkelen + база, CC-BY).
 
 ## 4. Базова карта
 
 **Kartverket WMTS (raster), шар `topograatone` (сіра)** — `https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png` як `raster`-source. Кольоровий `topo` — за потреби.
 - Ліцензія **CC-BY 4.0**; атрибуція **«© Kartverket»** + лінк на kartverket.no обов'язкова в UI.
-- Технічні ліміти — «вказані для кожного сервісу»; cache — best-effort безкоштовна інфра.
+- Технічні ліміти — див. умови кожного сервісу на kartverket.no (rate/квоти не хардкодимо); `cache.kartverket.no` — безкоштовна best-effort інфра без SLA.
 - Vector-база Kartverket `landtopo` — поки `/test/`, без SLA → на потім (`05` ADR-08).
 
 ## 5. Висоти / рельєф (каркас)
@@ -96,9 +98,9 @@
 
 > Прив'язка: природний шар **не виходить у продакшн без** varsom + yr + disclaimer + SOS (`01` §7, `03` §D). Усе нижче — каркас; на місто-MVP не впливає.
 
-**NVE Snøskredvarsel (лавини)** v6.3.2 — `api01.nve.no/hydrology/forecast/avalanche/...`; JSON/XML; **без ключа**; ключ за **Varsom-регіонами** (varslingsregioner). **NLOD (~CC-BY 3.0 NO).** Атрибуція: **«Varsler fra Snøskredvarslingen i Norge og www.varsom.no»**. **Показувати ПОВНЕ попередження** (рівень + текст), не вирізаний індикатор — вимога умов і безпеки.
+**NVE Snøskredvarsel (лавини)** v6.3.2 — `api01.nve.no/hydrology/forecast/avalanche/...`; JSON/XML; **без API-ключа**; запити параметризовано за **Varsom-регіонами** (varslingsregioner). **NLOD (~CC-BY 3.0 NO).** Атрибуція: **«Varsler fra Snøskredvarslingen i Norge og www.varsom.no»**. **Показувати ПОВНЕ попередження** (рівень + текст), не вирізаний індикатор — вимога умов і безпеки.
 
-**NVE Jordskred + Flom (зсуви/паводки)** — той самий хост; ключ за **kommune/fylke**; є **CAP-feed** (зручно для алертів). NLOD.
+**NVE Jordskred + Flom (зсуви/паводки)** — той самий хост; запити параметризовано за **kommune/fylke**; є **CAP-feed** (зручно для алертів). NLOD.
 
 **MET Locationforecast 2.0 (погода, yr)** — `api.met.no/weatherapi/locationforecast/2.0/compact?lat=&lon=`; JSON; **NLOD 2.0 + CC-BY 4.0**; **без ключа, але ОБОВ'ЯЗКОВИЙ ідентифікуючий `User-Agent`** (напр. `Streif/0.1 contact@semden.info`) — інакше **403**. Ліміт 20 req/s на застосунок; поважати `Expires`/`If-Modified-Since`; **не скрейпити yr.no — лише api.met.no**. Атрибуція: **«Data from MET Norway»**.
 
@@ -109,7 +111,7 @@
 | **CC-BY 4.0** | Kartverket (Matrikkelen, база, turrutebasen, høydedata, N50, SSR, Friluftsliv), MET | проста атрибуція |
 | **NLOD (~CC-BY 3.0 NO)** | NVE-попередження | атрибуція + повний показ |
 | **NLOD 2.0** | MET (поряд із CC-BY) | + ідентифікуючий User-Agent |
-| **ODbL** | OSM (лише bootstrap) | share-alike — уникати канонічно |
+| **ODbL** | OSM — геометрія в поточному live-CDN (Варіант 1, D31) + bootstrap | share-alike; **OSM-атрибуція обов'язкова, доки геометрія OSM-походження**; ціль — замінити на чисту CC-BY (P4) |
 | **CC0** | код `building2osm` | без вимог (дані все одно CC-BY) |
 | **per-object** | DNT NTB | перевіряти кожен об'єкт |
 
@@ -123,7 +125,7 @@
 
 ## 11. Відкриті точки
 
-- 🔴 **МІГРАЦІЯ on-demand джерела Overpass → pre-hosted CC-BY CDN** (`DECISIONS.md` D24/P4) — **обов'язкова перед публічним релізом**. Зараз on-demand тягне з Runtime Overpass (ODbL, флакі); продакшн потребує власного CDN з CC-BY (INSPIRE+Matrikkelen) — надійність, масштаб, ліцензія. *Не блокує dogfood; блокує реліз.* Денис: не забути цей перехід.
+- ✅ **CDN-міграція off-Overpass — ЗРОБЛЕНО** (Cloudflare R2 живий, `USE_CDN=true`, D31). 🔴 **Відкрито лишається ЛИШЕ ліцензійне очищення геометрії:** OSM (ODbL) → чиста CC-BY (INSPIRE/FKB через покриття/публічного партнера) **перед публічним релізом** (`DECISIONS.md` P4). *Не блокує dogfood; блокує реліз.*
 - ⚠ **Ліцензія footprint-полігонів INSPIRE** — метадані неоднозначні (Norge digitalt vs CC-BY). **Підтвердити з Kartverket до публічного релізу**, або брати геометрію лише з однозначно-CC-BY поставок. *Не блокує dogfood; блокує публічний реліз.*
 - ⚠ **Офлайн-копіювання базової карти** — письмово підтвердити з Kartverket (умови згадують спецправа для частини Geovekst-даних) → `DECISIONS.md` P4.
 - **Точні Geonorge download/WFS endpoint-и** (turrutebasen, Friluftsliv) — підтвердити через `kartkatalog.geonorge.no` metadata API (HTML JS-рендериться).
@@ -131,6 +133,32 @@
 - **DNT NTB reuse rights** — підтвердити з DNT, або лишитись на open Kartverket Friluftsliv.
 - **høydedata** — підтвердити, що LiDAR-проєкти Sunnmøre/M&R у відкритому наборі.
 - **Kommunenummer** (1577 Volda / 1520 Ørsta) — валідувати перед хардкодом (`ws.geonorge.no/kommuneinfo`).
+- **Джерела гейміфікації/історії** (§12) — доступ Morotur (API/завантаження) + ліцензії історичних (Riksantikvaren/Kulturminnesøk, Nasjonalbiblioteket, Kartverket historiske kart) — уточнити (post-MVP, `04` §11).
+
+---
+
+## 12. Джерела для гейміфікації (rarity-проксі · історія) — каркас `[POST-MVP]`
+
+> Живлять опційний шар гейміфікації (`04` §11). Усе — post-MVP; на місто-MVP не впливає. Rarity рахуємо за **відкритими проксі** (висота/віддаленість/тип/градація), НЕ за реальною відвідуваністю — гранульованих відкритих даних відвідуваності в Норвегії нема, а наявні упереджені (`04` §11.3, D13).
+
+**Turmål / вершини / складність (rarity-проксі):**
+- **Morotur** (morotur.no) — турпортал Møre og Romsdal fylkeskommune; **NLOD** (атрибуція). Включає Stikk UT!-turmål + difficulty-градації **Merkehåndboka** (зелений/синій/червоний/чорний); покриває пілот (Volda/Ørsta). Nyanse: описи від волонтерів варіюють — координати/градації надійні, описи з обережністю. Доступ (API/завантаження) уточнити (→ §11).
+- **Merkehåndboka** — національний стандарт градації; у грі лише **описова/safety-мітка**, НЕ множник балів (`04` §11.3).
+
+**Відвідуваність (лише контекст, НЕ пряме джерело балів):**
+- **Strava Global Heatmap** — публічна, але нормалізована (не кількісна), упереджена (спортивні, більше бігунів), лише на стежках → натхнення/валідація, не джерело в застосунку (ліцензія + bias).
+- **Strava Metro** — багатші дані, безкоштовно кваліфікованим організаціям за заявкою; не вільно-відкрито.
+- **Miljødirektoratet Friluftslivsområder (verdsatt)** — відкритий WMS; якісна оцінка цінності зони, не частота.
+- **Ferdselstellere** — реальні лічильники, розкидані по friluftsråd, не централізовані.
+- **SSB naturregnskap** — майбутнє джерело (в розробці), стежити.
+- **Найкраще джерело з часом = власні агреговані дані Streif** (точніші за зовнішні; агрегувати з min-user-threshold, без де-анонімізації — `07` §4).
+
+**Історичний шар (`04` §11.2 / P23):**
+- **Riksantikvaren / Kulturminnesøk** — пам'ятки з картою.
+- **Nasjonalbiblioteket** — оцифровані старі фото/карти, багато public domain.
+- **Kartverket historiske kart** + **lokalhistoriewiki**. Доступність/ліцензії уточнити (→ §11).
+
+**Landmarks для діорами (`04` §11.2 / P20):** знакові будівлі/споруди — Kartverket matrikkel-типи + Riksantikvaren (культурні пам'ятки); джерела уточнити.
 
 ---
 
