@@ -1,0 +1,102 @@
+# -*- coding: utf-8 -*-
+"""
+Build curated POI points for Streif Nature-v1 (D34, points-only, post-codex-review).
+
+IN : OSM POI JSON (fetch_poi.py) [+ optional SSB Tettsteder GML for city/nature tag]
+OUT: poi.geojson — Point FeatureCollection. Кожна фіча:
+     poi_id, type (Streif POI-категорія), name, source, source_id, license, city (bool), fetched
+
+Курація (codex: лін, require-name + ручний контроль): категорія-фільтр + name-обов'язковий +
+дедуп (source_id + near-dup same name/category ≤50м) + опційні poi_allowlist.txt / poi_blocklist.txt
+(source_id-и). Провенанс per-feature (codex MINOR #13). city/нейчур = tettsteder-PIP (реюз build_tiles).
+
+usage: python build_poi.py OUT.geojson POI_RAW.json [--tettsteder=t.gml] [--allow=poi_allowlist.txt] [--block=poi_blocklist.txt]
+"""
+import sys, os, json, math, datetime
+
+# --- Streif POI-категорії з OSM-тегів (куратний набір; None = не показуємо) ---
+# ⚠️ historic=* шумний: 204 seter/støl (shieling) — сільські ферми, не «цікаві місця».
+# Whitelist справді цікавих культурних підтипів (codex #11: звузити курацію).
+CULTURAL_HIST = {"monument", "memorial", "ruins", "heritage", "castle", "fort", "manor",
+                 "archaeological_site", "church", "chapel", "wayside_shrine", "wayside_cross",
+                 "boundary_stone", "cannon", "ship", "aircraft", "locomotive", "tomb", "citywalls"}
+def poi_category(t):
+    tour = (t.get("tourism") or "").lower(); hist = (t.get("historic") or "").lower()
+    nat = (t.get("natural") or "").lower(); am = (t.get("amenity") or "").lower()
+    leis = (t.get("leisure") or "").lower(); bld = (t.get("building") or "").lower()
+    if tour == "viewpoint": return "viewpoint"
+    if tour in ("alpine_hut", "wilderness_hut"): return "hut"
+    if am == "shelter": return "shelter"
+    if am == "place_of_worship" or bld == "church": return "church"
+    if nat == "beach" or leis == "beach_resort": return "badeplass"
+    if nat == "peak": return "peak"
+    if hist in CULTURAL_HIST or tour == "artwork": return "cultural"   # seter/farm/… → None (шум)
+    return None
+
+def coords(e):
+    if e.get("type") == "node": return e.get("lon"), e.get("lat")
+    c = e.get("center") or {}; return c.get("lon"), c.get("lat")
+
+def load_ids(path):
+    if not path or not os.path.exists(path): return set()
+    return {ln.strip() for ln in open(path, encoding="utf-8") if ln.strip() and not ln.startswith("#")}
+
+def main():
+    args = {a.split("=", 1)[0]: a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--")}
+    rest = [a for a in sys.argv[1:] if not a.startswith("--")]
+    out, raw_path = rest[0], rest[1]
+    allow = load_ids(args.get("--allow")); block = load_ids(args.get("--block"))
+
+    tett = []
+    if args.get("--tettsteder"):
+        from build_tiles import parse_tettsteder, locate_tettsted   # реюз PIP
+        tett = parse_tettsteder(args["--tettsteder"])
+        print(f"  tettsteder: {len(tett)} поселень (для city/nature-тегу)")
+
+    j = json.load(open(raw_path, encoding="utf-8"))
+    fetched = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    feats = []; seen = set(); near = []                # near: (cat,name,x,y) для дедупу дублікатів
+    kept_by_cat = {}; skipped = {"no_name": 0, "no_cat": 0, "no_coord": 0, "dup": 0, "blocked": 0}
+    for e in j.get("elements", []):
+        t = e.get("tags", {})
+        cat = poi_category(t)
+        if not cat: skipped["no_cat"] += 1; continue
+        name = (t.get("name") or "").strip()
+        if not name: skipped["no_name"] += 1; continue
+        lon, lat = coords(e)
+        if lon is None or lat is None: skipped["no_coord"] += 1; continue
+        sid = f"{e['type'][0]}{e['id']}"              # n123 / w456 / r789
+        if sid in block: skipped["blocked"] += 1; continue
+        if allow and sid not in allow: continue        # tight-режим: лише allowlist
+        if sid in seen: skipped["dup"] += 1; continue
+        # near-dup: та сама категорія+назва в межах ~50м (церква як node+way тощо)
+        kLon = 111320.0 * math.cos(math.radians(lat)); dupd = False
+        for c2, n2, x2, y2 in near:
+            if c2 == cat and n2 == name:
+                dx = (lon - x2) * kLon; dy = (lat - y2) * 111320.0
+                if dx * dx + dy * dy < 2500: dupd = True; break
+        if dupd: skipped["dup"] += 1; continue
+        seen.add(sid); near.append((cat, name, lon, lat))
+        city = None
+        if tett:
+            from build_tiles import locate_tettsted
+            city = locate_tettsted(lon, lat, tett) is not None
+        feats.append({"type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [round(lon, 6), round(lat, 6)]},
+            "properties": {"poi_id": f"osm_{sid}", "type": cat, "name": name,
+                           "source": "osm", "source_id": sid, "license": "ODbL",
+                           "city": city, "fetched": fetched}})
+        kept_by_cat[cat] = kept_by_cat.get(cat, 0) + 1
+
+    fc = {"type": "FeatureCollection",
+          "attribution": "© OpenStreetMap contributors (ODbL)",
+          "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+          "features": feats}
+    json.dump(fc, open(out, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+    ncity = sum(1 for f in feats if f["properties"]["city"] is True)
+    print(f"POI: {len(feats)} kept  {kept_by_cat}")
+    print(f"  city={ncity} nature={len(feats)-ncity}  skipped={skipped}")
+    print(f"  -> {out}")
+
+if __name__ == "__main__":
+    main()

@@ -94,6 +94,16 @@ buildConfigField("String", "CDN_BASE_URL", "\"https://pub-<hash>.r2.dev\"")
 | 300–599, 600–669, 700–899 | public |
 | 2xx, 999 | other |
 
+## POI «цікаві місця» — Nature-v1 (D34, points-only)
+
+Куратні точки з **відкритих даних** (ODbL, © OpenStreetMap) для «збирай»-механіки (D34; reveal лишається головним). Points-only (стежки відкладено); курація лін (1 джерело + require-name + ручний allowlist, codex-review).
+```
+python fetch_poi.py poi_raw.json 1577 1520          # Overpass: viewpoint/cultural/church/badeplass/hut/shelter/peak
+python build_poi.py poi.geojson poi_raw.json --tettsteder=tettsteder.gml [--allow=poi_allowlist.txt] [--block=poi_blocklist.txt]
+```
+`build_poi.py` категоризує (whitelist типів; `historic=seter/shieling`-шум відсіяно), вимагає `name`, дедупить (source_id + near-dup ≤50м), тегує **city/nature** (tettsteder-PIP) і кладе **провенанс per-feature** (`poi_id`,`type`,`name`,`source`,`source_id`,`license`,`city`,`fetched`). **Ручна курація:** `poi_allowlist.txt` (лише ці source_id — tight-режим для безпечного тесту) / `poi_blocklist.txt`.
+Вихід `poi.geojson` — Point-FeatureCollection. Volda+Ørsta: **~249 POI** (11 міських перлин — kyrkje, Ivar Aasen, монументи; решта природа/піки). ⚠️ Піки (нейчур) для safe-тесту курувати allowlist-ом до доступних + dwell/topo на клієнті (D34).
+
 ## Продакшн-TODO (D31)
 - **Eligibility → Elveg ✅ ЗРОБЛЕНО (Варіант B: Elveg + OSM-bridge).** Тайли-`accessible` рахуються з Kartverket NVDB Vegnett Pluss + OSM-footpath-bridge (нуль recall-регресії). ⚠️ **Pipeline-vs-runtime розбіжність:** offline-тайли на CDN несуть Elveg-eligibility, але **runtime on-demand (D24, USE_CDN=false / Overpass) на девайсі й далі рахує accessible з OSM-highways** — Elveg там немає. Повне вирівнювання — коли Elveg-мережа теж поїде pre-hosted. Прибрати OSM-bridge, коли (а) геометрія → CC-BY (FKB) І (б) Elveg домігрує `sti`/`traktorveg` (~2027), або додати Turrutebasen (природний шар).
 - **Custom domain** `tiles.streif.no` перед першим зовнішнім тестером (r2.dev — dev-only, rate-limited) → потім вимкнути r2.dev + Smart Tiered Cache.
