@@ -10,6 +10,10 @@ apks/
 seed_areas/
 _cache_*
 
+# === Python (spike/pipeline) ===
+__pycache__/
+*.pyc
+
 # === Android / Gradle (коли з'явиться справжній проєкт) ===
 build/
 .gradle/
