@@ -7,6 +7,19 @@
 
 ---
 
+## 2026-07-12 — Nature-v1 (POI points-only) — ЗБУДОВАНО (інкременти 1-4)
+
+Після дизайну (D34) + codex-звуження до points-only — збудовано природну **«збирай»-механіку** (POI «цікаві місця» з відкритих даних), reveal лишається головним (D34 REFINED). Стек нижче UI не торкано.
+
+- **Інкр. 1 — пайплайн:** `fetch_poi.py` + `build_poi.py` — куратні POI з OSM (категорії viewpoint/church/cultural/badeplass/hut/shelter/peak; **seter-шум відсіяно**), require-name, дедуп, **city/nature-тег** (tettsteder-PIP), **провенанс per-feature** (source/source_id/license), ручний allowlist → `poi.geojson` (**249 POI**, 11 міських перлин: kyrkje, Ivar Aasen, монумент Mahler). Залито на **R2**.
+- **Інкр. 2 — рендер:** `PoiType`-палітра (6 гліфів+церква) + `SymbolLayer` (SDF-тінт за типом). **Walksy-маркери** (фон-коло + обводка колір-за-типом) — **device-verified**.
+- **Інкр. 3 — зарахування:** `PoiIndex` (parse+nearby) + `TrackingRepository.checkPoiAt` (proximity ≤35 м; **вершини +dwell**, codex #10). Room `poi_visits` + **MIGRATION_1_2** (будинок-розкриття виживають). Collected-стан: зібране = **залите коло**, ще ні = контурне. Код + `PoiIndexTest` ✅; walk-verify pending.
+- **Інкр. 4 — картка+режим:** тап POI → `queryRenderedFeatures` → мінімальна калм-кор картка (`ModalBottomSheet`: іконка+назва+тип+«зібрано»). **Іконка режиму** місто/природа (`FabStack`, авто за tettsted + ручний override). Game-y (фото/lore/рідкість/таймери) → **opt-in шар D33**, НЕ v1.
+
+Компіляція + JVM-тести ✅ (PoiIndexTest, TettstedIndexTest, WalkViewModelTest, BuildingStoreTest). **Device:** рендер+Walksy verified; картка/режим/walk-зарахування — pending reconnect + польова прогулянка. Гілки Android → main запушено.
+
+---
+
 ## 2026-07-12 — Codex-review сесії → звуження Nature-v1 до points-only
 
 **Незалежний cross-model огляд (codex-cli 0.101, read-only)** усієї сесії (P20-імплементація + D34-дизайн) на запит Дениса — «чи всі рішення оптимальні, чи нічого не пропустили». 14 знахідок (2 BLOCKER, 10 IMPORTANT, 2 MINOR) + 4 «що добре» + verdict. Знахідки **верифіковано** по коду/рішеннях (не сліпо переказано).
