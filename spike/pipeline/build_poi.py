@@ -12,7 +12,7 @@ OUT: poi.geojson — Point FeatureCollection. Кожна фіча:
 
 usage: python build_poi.py OUT.geojson POI_RAW.json [--tettsteder=t.gml] [--allow=poi_allowlist.txt] [--block=poi_blocklist.txt]
 """
-import sys, os, json, math, datetime
+import sys, os, json, math, datetime, urllib.request, urllib.parse
 
 # --- Streif POI-категорії з OSM-тегів (куратний набір; None = не показуємо) ---
 # ⚠️ historic=* шумний: 204 seter/støl (shieling) — сільські ферми, не «цікаві місця».
@@ -41,9 +41,35 @@ def load_ids(path):
     if not path or not os.path.exists(path): return set()
     return {ln.strip() for ln in open(path, encoding="utf-8") if ln.strip() and not ln.startswith("#")}
 
+# --- фото POI (--images): Wikidata P18 / OSM image-тег → URL картинки з Wikimedia Commons (© Commons) ---
+def commons_filepath(fn):
+    fn = fn.strip()
+    if fn.lower().startswith("file:"): fn = fn[5:]
+    return "https://commons.wikimedia.org/wiki/Special:FilePath/" + urllib.parse.quote(fn.replace(" ", "_")) + "?width=640"
+
+def resolve_wikidata_images(ids):
+    """batch Wikidata wbgetentities → {Qid: commons_url} за claim P18 (image)."""
+    out = {}; ids = list(ids)
+    for i in range(0, len(ids), 50):
+        chunk = ids[i:i + 50]
+        url = ("https://www.wikidata.org/w/api.php?action=wbgetentities&ids="
+               + "|".join(chunk) + "&props=claims&format=json")
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Streif-pipeline/0.1 (contact@semden.info)"})
+            j = json.load(urllib.request.urlopen(req, timeout=60))
+        except Exception as ex:
+            print(f"  wikidata fail: {ex}"); continue
+        for qid, ent in j.get("entities", {}).items():
+            p18 = ent.get("claims", {}).get("P18")
+            if p18:
+                try: out[qid] = commons_filepath(p18[0]["mainsnak"]["datavalue"]["value"])
+                except Exception: pass
+    return out
+
 def main():
     args = {a.split("=", 1)[0]: a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--") and "=" in a}
     city_only = "--city-only" in sys.argv    # безпечний тест-режим: лише міські POI (у tettsted), без гір
+    do_images = "--images" in sys.argv        # фото з Wikidata/Commons (мережа) → prop "image"
     rest = [a for a in sys.argv[1:] if not a.startswith("--")]
     out, raw_path = rest[0], rest[1]
     allow = load_ids(args.get("--allow")); block = load_ids(args.get("--block"))
@@ -56,7 +82,7 @@ def main():
 
     j = json.load(open(raw_path, encoding="utf-8"))
     fetched = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
-    feats = []; seen = set(); near = []                # near: (cat,name,x,y) для дедупу дублікатів
+    feats = []; meta = []; seen = set(); near = []     # meta: (wikidata, image-тег) паралельно feats; near: дедуп
     kept_by_cat = {}; skipped = {"no_name": 0, "no_cat": 0, "no_coord": 0, "dup": 0, "blocked": 0}
     for e in j.get("elements", []):
         t = e.get("tags", {})
@@ -90,7 +116,23 @@ def main():
             "properties": {"poi_id": f"osm_{sid}", "type": cat, "name": name,
                            "source": "osm", "source_id": sid, "license": "ODbL",
                            "city": city, "fetched": fetched}})
+        meta.append(((t.get("wikidata") or "").strip() or None, t.get("image")))   # для --images
         kept_by_cat[cat] = kept_by_cat.get(cat, 0) + 1
+
+    if do_images:                                            # фото → prop "image" (Wikidata P18 / Commons image-тег)
+        wd_url = resolve_wikidata_images({wd for wd, _ in meta if wd})
+        nimg = 0
+        for f, (wd, imgtag) in zip(feats, meta):
+            url = wd_url.get(wd) if wd else None
+            if not url and imgtag:
+                it = imgtag.strip()
+                if not it.lower().startswith("http"): url = commons_filepath(it)      # bare / "File:X"
+                elif "wikimedia.org" in it: url = it                                   # commons/upload URL
+            if url:
+                f["properties"]["image"] = url
+                f["properties"]["image_credit"] = "© Wikimedia Commons"
+                nimg += 1
+        print(f"  images: {nimg}/{len(feats)} POI з фото (© Wikimedia Commons)")
 
     fc = {"type": "FeatureCollection",
           "attribution": "© OpenStreetMap contributors (ODbL)",
