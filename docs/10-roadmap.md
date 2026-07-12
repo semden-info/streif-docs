@@ -75,7 +75,7 @@
 
 ## 10. Фаза 7 — Підготовка релізу
 
-- **Ліцензія footprint** підтверджена з Kartverket (`06` §11); **Play FGS-декларація** (`07` §6); **privacy policy** (bm/nn/en); **accessibility-аудит** WCAG 2.1 AA; **attribution-екран** (© Kartverket тощо, `06` §9).
+- **Ліцензія footprint** підтверджена з Kartverket (`06` §11); **Play FGS-декларація** (`07` §6); **privacy policy** (bm/nn/en); **accessibility-аудит** WCAG 2.1 AA; **attribution-екран** (© Kartverket тощо, `06` §9) + **per-image кредит фото POI** (автор + CC-BY-SA, Wikimedia Commons — D34).
 - **Вихід:** готовий до Google Play.
 
 ## 11. Post-MVP (наброски — без дат, за пріоритетом)

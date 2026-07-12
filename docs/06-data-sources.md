@@ -34,6 +34,7 @@
 | MET Locationforecast 2.0 | **GATE**/погода | NLOD 2.0 + CC-BY 4.0 | REST JSON | каркас |
 | DNT Nasjonal Turbase | Хижки | per-object (verify) | REST JSON (key) | каркас |
 | Kartverket Friluftsliv | Хижки/стежки | CC-BY 4.0 | GeoJSON/GML/GPX | каркас |
+| **Wikimedia Commons (фото POI, D34)** | POI/Природа | **CC-BY-SA** (per-image) ⚠ | Wikidata `P18` → `Special:FilePath` (HTTPS; ⚠ потрібен описовий User-Agent) | **Nature-v1 (тест)** |
 
 ---
 
@@ -114,8 +115,11 @@
 | **ODbL** | OSM — геометрія в поточному live-CDN (Варіант 1, D31) + bootstrap | share-alike; **OSM-атрибуція обов'язкова, доки геометрія OSM-походження**; ціль — замінити на чисту CC-BY (P4) |
 | **CC0** | код `building2osm` | без вимог (дані все одно CC-BY) |
 | **per-object** | DNT NTB | перевіряти кожен об'єкт |
+| **CC-BY-SA** | Wikimedia Commons (фото POI місць, D34) | share-alike + **per-image автор+ліцензія** обов'язкові; ⚠ Commons вимагає описовий User-Agent інакше **403** (як MET, §8) |
 
 **Екран атрибуції** має містити дослівно: `© Kartverket` · `Data from MET Norway` · `Varsler fra Snøskredvarslingen/Flomvarslingen i Norge og www.varsom.no` · для систематичного SSR — `Stadnamn frå SSR © Kartverket`. **SSR має database-захист** поверх CC-BY.
+
+> **Фото POI (Nature-v1, D34) — pre-release TODO:** картка POI показує ілюстративне фото місця з **Wikidata `P18` → Wikimedia Commons**. Зараз кредит generic «Foto: Wikimedia Commons» (тест). CC-BY-SA вимагає **per-image автора + ліцензію** — перед публічним релізом тягнути автора/ліцензію з Commons `imageinfo` API. ⚠ Commons віддає **403** на дефолтний User-Agent → застосунок ставить описовий UA (`Streif/0.1 contact@…`, як вимога MET у §8/§9).
 
 ## 10. Відтворюваність / оновлення
 

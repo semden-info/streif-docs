@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-07-12 — POI-фото на картці + Wikimedia UA-fix + swap кольорів (follow-up до Nature-v1)
+
+Пост-білд додатки того ж дня (поверх «Nature-v1 ЗБУДОВАНО» нижче). Reveal-стек не торкано.
+
+- **Фото POI (пайплайн):** `build_poi.py --images` — Wikidata-клейм **P18 → Wikimedia Commons** (`Special:FilePath` ?width=640). З 11 міських POI фото отримали **4**: Volda/Ørsta/Hornindal kyrkje + монумент Mahler (краєвиди/badeplass без Wikidata-картинки — без фото). `poi.geojson` перезалито на **R2**. Коміт `2c74bcd`.
+- **Фото POI (Android):** калм-кор картка тепер показує фото — **Coil 2.7.0**, `AsyncImage` (180dp), поле `PoiCardInfo.image` (URL із `image` у poi.geojson). **Device-verified:** фото Volda kyrkje рендериться у картці.
+- **Wikimedia UA-fix (ЧОМУ):** Commons віддає **403** на дефолтний okhttp-UA (UA-policy Wikimedia) → фото порожні. `StreifApp` реалізує `ImageLoaderFactory` з OkHttp-інтерсептором, що ставить `User-Agent: Streif/0.1 (contact@semden.info)`. Перевірено: no-UA/okhttp→403, Streif-UA→**200**; device-verified. (Та сама «пастка UA», що й MET у `06` §8.)
+- **Swap кольорів будівель (запит Дениса):** `BuildingPalette` — житло `#E0392B`→**`#3FA340`** (зелений), господарче/uthus `#3FA340`→**`#E0392B`** (червоний). Канон палітри оновлено в `08` §2 (наратив «червоні норвезькі löer/стодоли»). Device-verified у легенді (108 зелених / 52 червоних).
+- **⚠️ Pre-release TODO:** кредит фото поки generic «Foto: Wikimedia Commons»; CC-BY-SA вимагає **per-image автора+ліцензію** (тягнути з Commons `imageinfo` API) — юр-вимога атрибуції, як ODbL/CC-BY по картах (`06` §9).
+
+---
+
 ## 2026-07-12 — Nature-v1 (POI points-only) — ЗБУДОВАНО (інкременти 1-4)
 
 Після дизайну (D34) + codex-звуження до points-only — збудовано природну **«збирай»-механіку** (POI «цікаві місця» з відкритих даних), reveal лишається головним (D34 REFINED). Стек нижче UI не торкано.
@@ -14,9 +26,9 @@
 - **Інкр. 1 — пайплайн:** `fetch_poi.py` + `build_poi.py` — куратні POI з OSM (категорії viewpoint/church/cultural/badeplass/hut/shelter/peak; **seter-шум відсіяно**), require-name, дедуп, **city/nature-тег** (tettsteder-PIP), **провенанс per-feature** (source/source_id/license), ручний allowlist → `poi.geojson` (**249 POI**, 11 міських перлин: kyrkje, Ivar Aasen, монумент Mahler). Залито на **R2**.
 - **Інкр. 2 — рендер:** `PoiType`-палітра (6 гліфів+церква) + `SymbolLayer` (SDF-тінт за типом). **Walksy-маркери** (фон-коло + обводка колір-за-типом) — **device-verified**.
 - **Інкр. 3 — зарахування:** `PoiIndex` (parse+nearby) + `TrackingRepository.checkPoiAt` (proximity ≤35 м; **вершини +dwell**, codex #10). Room `poi_visits` + **MIGRATION_1_2** (будинок-розкриття виживають). Collected-стан: зібране = **залите коло**, ще ні = контурне. Код + `PoiIndexTest` ✅; walk-verify pending.
-- **Інкр. 4 — картка+режим:** тап POI → `queryRenderedFeatures` → мінімальна калм-кор картка (`ModalBottomSheet`: іконка+назва+тип+«зібрано»). **Іконка режиму** місто/природа (`FabStack`, авто за tettsted + ручний override). Game-y (фото/lore/рідкість/таймери) → **opt-in шар D33**, НЕ v1.
+- **Інкр. 4 — картка+режим:** тап POI → `queryRenderedFeatures` → мінімальна калм-кор картка (`ModalBottomSheet`: іконка+назва+тип+«зібрано»). **Іконка режиму** місто/природа (`FabStack`, авто за tettsted + ручний override). **Фото** місця (курований міський набір) — додано у v1-картку того ж дня (див. follow-up вище); lore/рідкість/таймери/челенджі лишаються **opt-in шар D33**, НЕ v1.
 
-Компіляція + JVM-тести ✅ (PoiIndexTest, TettstedIndexTest, WalkViewModelTest, BuildingStoreTest). **Device:** рендер+Walksy verified; картка/режим/walk-зарахування — pending reconnect + польова прогулянка. Гілки Android → main запушено.
+Компіляція + JVM-тести ✅ (PoiIndexTest, TettstedIndexTest, WalkViewModelTest, BuildingStoreTest). **Device:** рендер+Walksy+картка+режим+фото verified (2026-07-12); лишається **walk-зарахування** (польова прогулянка). Гілки Android → main запушено.
 
 ---
 
