@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-07-12 — P26: Settings-екран + перемикач стилю карти (ЗБУДОВАНО частину «a»)
+
+In-app тюнінг-панель, щоб Денис перемикав опції сам на пристрої **без ребілду** (пришвидшує його design-ітерацію фази dogfood). Приводом став тюнінг стилю Kartverket (сірий vs кольоровий).
+
+- **Вхід:** gear-FAB (вершина `FabStack`) → `SettingsSheet` (`ModalBottomSheet`).
+- **Стиль базової карти:** 4 варіанти Kartverket WMTS — **сірий `topograatone` (дефолт)** / **приглушений колір** (`topo` + MapLibre `raster-saturation −0.6`) / **колір `topo`** / **растр `toporaster`**. Swap **на льоту**: `MapController.applyBasemap` прибирає+додає `base` RasterSource, layer на index 0 (під усіма оверлеями) — **без ребілду стилю**.
+- **Персист:** `SettingsStore` (SharedPreferences); відновлюється на старті (`WalkScreen` `LaunchedEffect` синхронізує вибір із персистом). VM лишається **CMP-clean** (`basemapKey` = String, без Android-типів).
+- **Device-verified:** перемикання миттєве; вибір переживає force-stop+рестарт (Muted).
+- **Далі (P26 b/c):** кольори типів будівель (color-picker — **accessibility**, colorblind-палітра) + акцент/фон кнопок.
+
+---
+
 ## 2026-07-12 — POI-фото на картці + Wikimedia UA-fix + swap кольорів (follow-up до Nature-v1)
 
 Пост-білд додатки того ж дня (поверх «Nature-v1 ЗБУДОВАНО» нижче). Reveal-стек не торкано.
