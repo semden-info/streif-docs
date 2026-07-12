@@ -101,7 +101,7 @@ buildConfigField("String", "CDN_BASE_URL", "\"https://pub-<hash>.r2.dev\"")
 python fetch_poi.py poi_raw.json 1577 1520          # Overpass: viewpoint/cultural/church/badeplass/hut/shelter/peak
 python build_poi.py poi.geojson poi_raw.json --tettsteder=tettsteder.gml [--allow=poi_allowlist.txt] [--block=poi_blocklist.txt]
 ```
-`build_poi.py` категоризує (whitelist типів; `historic=seter/shieling`-шум відсіяно), вимагає `name`, дедупить (source_id + near-dup ≤50м), тегує **city/nature** (tettsteder-PIP) і кладе **провенанс per-feature** (`poi_id`,`type`,`name`,`source`,`source_id`,`license`,`city`,`fetched`). **Ручна курація:** `poi_allowlist.txt` (лише ці source_id — tight-режим для безпечного тесту) / `poi_blocklist.txt`.
+`build_poi.py` категоризує (whitelist типів; `historic=seter/shieling`-шум відсіяно), вимагає `name`, дедупить (source_id + near-dup ≤50м), тегує **city/nature** (tettsteder-PIP) і кладе **провенанс per-feature** (`poi_id`,`type`,`name`,`source`,`source_id`,`license`,`city`,`fetched`). **Ручна курація:** `poi_allowlist.txt` (лише ці source_id — tight-режим) / `poi_blocklist.txt`. **`--city-only`** — безпечний тест-режим: лише міські POI (у tettsted), без гір (Volda+Ørsta → 11 перлин: kyrkje/монументи/gapahuk). Повний safety-gate (varsom/yr/SOS) для природних POI — реліз (D34).
 Вихід `poi.geojson` — Point-FeatureCollection. Volda+Ørsta: **~249 POI** (11 міських перлин — kyrkje, Ivar Aasen, монументи; решта природа/піки). ⚠️ Піки (нейчур) для safe-тесту курувати allowlist-ом до доступних + dwell/topo на клієнті (D34).
 
 ## Продакшн-TODO (D31)

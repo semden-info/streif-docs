@@ -42,7 +42,8 @@ def load_ids(path):
     return {ln.strip() for ln in open(path, encoding="utf-8") if ln.strip() and not ln.startswith("#")}
 
 def main():
-    args = {a.split("=", 1)[0]: a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--")}
+    args = {a.split("=", 1)[0]: a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--") and "=" in a}
+    city_only = "--city-only" in sys.argv    # безпечний тест-режим: лише міські POI (у tettsted), без гір
     rest = [a for a in sys.argv[1:] if not a.startswith("--")]
     out, raw_path = rest[0], rest[1]
     allow = load_ids(args.get("--allow")); block = load_ids(args.get("--block"))
@@ -81,6 +82,9 @@ def main():
         if tett:
             from build_tiles import locate_tettsted
             city = locate_tettsted(lon, lat, tett) is not None
+        if city_only and city is not True:               # safe-тест: пропустити все поза містом (гори тощо)
+            skipped["nature"] = skipped.get("nature", 0) + 1
+            continue
         feats.append({"type": "Feature",
             "geometry": {"type": "Point", "coordinates": [round(lon, 6), round(lat, 6)]},
             "properties": {"poi_id": f"osm_{sid}", "type": cat, "name": name,
