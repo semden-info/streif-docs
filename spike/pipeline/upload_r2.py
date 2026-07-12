@@ -22,7 +22,7 @@ s3 = boto3.client(
 # тим кроком) → виключаємо з цього glob і заливаємо окремо нижче (in-code gzip), інакше віддали б
 # нестиснений файл із заголовком Content-Encoding: gzip = битий на клієнті.
 files = sorted(f for f in glob.glob(os.path.join(TILES, "*.geojson"))
-               if os.path.basename(f) != "tettsteder.geojson")
+               if os.path.basename(f) not in ("tettsteder.geojson", "poi.geojson"))
 print(f"uploading {len(files)} tiles -> r2://{BUCKET}")
 extra = {
     "ContentType": "application/json",          # тип РОЗПАКОВАНОГО вмісту
@@ -62,6 +62,17 @@ if os.path.exists(tf):
     print(f"uploaded tettsteder.geojson (gzip {len(buf.getvalue())//1024} KB)")
 else:
     print(f"WARN: {tf} не знайдено — скопіюй tettsteder.geojson у {TILES} перед заливкою (P20)")
+
+# D34: poi.geojson — куратні «цікаві місця». Gzip у коді, як tettsteder.
+pf = os.path.join(TILES, "poi.geojson")
+if os.path.exists(pf):
+    buf = io.BytesIO()
+    with gzip.GzipFile(fileobj=buf, mode="wb", compresslevel=9) as g:
+        g.write(open(pf, "rb").read())
+    s3.put_object(Bucket=BUCKET, Key="poi.geojson", Body=buf.getvalue(),
+                  ContentType="application/json", ContentEncoding="gzip",
+                  CacheControl="public, max-age=300, stale-while-revalidate=86400")
+    print(f"uploaded poi.geojson (gzip {len(buf.getvalue())//1024} KB)")
 
 # verify: HEAD one object
 head = s3.head_object(Bucket=BUCKET, Key="area_3107_304.geojson")
