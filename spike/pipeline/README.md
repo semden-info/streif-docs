@@ -96,13 +96,74 @@ buildConfigField("String", "CDN_BASE_URL", "\"https://pub-<hash>.r2.dev\"")
 
 ## POI «цікаві місця» — Nature-v1 (D34, points-only)
 
-Куратні точки з **відкритих даних** (ODbL, © OpenStreetMap) для «збирай»-механіки (D34; reveal лишається головним). Points-only (стежки відкладено); курація лін (1 джерело + require-name + ручний allowlist, codex-review).
+Куратні точки з **відкритих даних** для «збирай»-механіки (D34; reveal лишається головним). Points-only (стежки-лінії відкладено); курація лін (require-name + алгоритм-гейт + ручна ухвала людини, codex-review).
+
+**Атрибуція POI-шару** (пише сам `build_poi.py` у поле `attribution`): **© OpenStreetMap contributors (ODbL) · © Miljødirektoratet (Naturbase, NLOD 2.0)** — поряд із © Kartverket (Matrikkelen) і © Statistisk sentralbyrå (Tettsteder) з тайлових секцій вище.
+
+### 1. Джерела (fetch-скрипти = сирі дані, без курації)
 ```
-python fetch_poi.py poi_raw.json 1577 1520          # Overpass: viewpoint/cultural/church/badeplass/hut/shelter/peak
-python build_poi.py poi.geojson poi_raw.json --tettsteder=tettsteder.gml [--allow=poi_allowlist.txt] [--block=poi_blocklist.txt]
+python fetch_poi.py       poi_raw.json     1577 1520   # Overpass: viewpoint/cultural/church/badeplass/hut/shelter/peak
+python fetch_trails.py    trails_raw.json  1577 1520   # піша мережа OSM: highway=path|footway|track|steps|pedestrian|
+                                                       #   cycleway|residential|living_street|service|unclassified|tertiary
+                                                       #   + relation route=hiking (маркований маршрут) — для safety-гейту
+python fetch_naturbase.py naturbase.json   1577 1520   # Naturbase «kartlagte friluftslivsområder» (Miljødirektoratet)
+python fetch_osm.py 1577 osm_volda.json                # (уже є для тайлів) — потрібні для правила «POI ≠ будинок»
 ```
-`build_poi.py` категоризує (whitelist типів; `historic=seter/shieling`-шум відсіяно), вимагає `name`, дедупить (source_id + near-dup ≤50м), тегує **city/nature** (tettsteder-PIP) і кладе **провенанс per-feature** (`poi_id`,`type`,`name`,`source`,`source_id`,`license`,`city`,`fetched`). **Ручна курація:** `poi_allowlist.txt` (лише ці source_id — tight-режим) / `poi_blocklist.txt`. **`--city-only`** — безпечний тест-режим: лише міські POI (у tettsted), без гір (Volda+Ørsta → 11 перлин: kyrkje/монументи/gapahuk). Повний safety-gate (varsom/yr/SOS) для природних POI — реліз (D34).
-Вихід `poi.geojson` — Point-FeatureCollection. Volda+Ørsta: **~249 POI** (11 міських перлин — kyrkje, Ivar Aasen, монументи; решта природа/піки). ⚠️ Піки (нейчур) для safe-тесту курувати allowlist-ом до доступних + dwell/topo на клієнті (D34).
+**Naturbase** (`fetch_naturbase.py`) — ArcGIS REST `kart.miljodirektoratet.no/.../friluftsliv_kartlagt/MapServer/1/query`, `f=geojson`, **ключ не потрібен**, пагінація по 1000. Ліцензія **NLOD 2.0**, атрибуція **© Miljødirektoratet**. Тягне **всі** закартовані зони комун (**385 områder** для 1577+1520); що з них badeplass — вирішує `build_poi.py`. Це наше джерело **badeplass**: в OSM пляжів із назвами тут практично немає, а Naturbase дає `omraadenavn` + `omraadebeskrivelse` + `omraadeverdi` + стабільний `kartlagtFOID`.
+
+### 2. Курація → `poi.geojson`
+```
+PYTHONIOENCODING=utf-8 \
+python build_poi.py poi.geojson poi_raw.json \
+  --tettsteder=tettsteder.gml \
+  --safe --trails=trails_raw.json \
+  --dedup-buildings=osm_volda.json,osm_orsta.json \
+  --naturbase=naturbase.json --allow-unnamed --images \
+  --nature-allow=poi_nature_allowlist.txt --block=poi_blocklist.txt \
+  --report=poi_candidates.tsv
+# ⚠️ PYTHONIOENCODING обов'язковий на Windows (cp1252 ламає вивід) — див. «Пастки»
+```
+Прапорці (дефолти в дужках):
+
+| Прапорець | Що робить |
+|---|---|
+| `--safe` + `--trails=` | safety-гейт **природних** POI (D34 ⑧): ≤ `--trail-max` (60 м) до пішої мережі · `sac_scale` ≤ `--sac-max` (2 = T2 mountain_hiking; T3+ = скрембл) · `ele` ≤ `--ele-max` (1000 м) |
+| `--dedup-buildings=` | правило **«POI ≠ будинок»**: будинок і так фарбується reveal-механікою (D25) → POI-дубль дав би подвійне розкриття. Викидає POI, якщо його `source_id` = way-id будинку або точка лежить у полігоні будинку (PIP). **Виняток — `hut`/`shelter`** (хижка/gapahuk = ціль походу, не фон) |
+| `--allow-unnamed` | viewpoint/shelter/badeplass без `name` → генерична назва (Utsiktspunkt/Gapahuk/Badeplass) + `name_generic:true`. Для peak/church/cultural назва лишається обов'язковою. Генерики дедупляться **лише за відстанню** |
+| `--naturbase=` | додає badeplass-кандидатів (полігон → центроїд; площа > 100 000 м² відсікається, щоб центроїд не впав посеред озера) |
+| `--dup-m` (50) / `--dup-cross-m` (100) | near-dup у межах одного джерела / між джерелами (центроїд Naturbase і точка OSM того самого пляжу природно розходяться) |
+| `--report=file.tsv` | таблиця природних кандидатів (`trail_m`, `sac`, `on_route`, `ele`, `auto_ok`, `why`) — **для людської ухвали** (D34 ⑦: гібрид алгоритм+людина) |
+| `--nature-allow=` | фінальний список природних POI, ухвалений людиною (лише ці `source_id`); перекриває авто-гейт |
+| `--allow=` / `--block=` | глобальний tight-allowlist / блоклист за `source_id` |
+| `--city-only` | тест-режим: лише міські POI (у tettsted), без гір |
+| `--images` | фото → Wikimedia Commons (`image` + `image_credit` + `image_wikidata`). **Два шляхи:** (1) OSM-тег `wikidata` → claim P18 (або тег `image`); (2) **геопошук** Wikidata за координатами (`wikibase:around`) для POI, яким (1) фото не дав |
+| `--no-images-geo` | лишити тільки шлях (1) — стара поведінка `--images` (без мережевих запитів до WDQS) |
+| `--geo-radius` (0.5) | радіус геопошуку, км |
+
+Провенанс per-feature: `poi_id`, `type`, `name`, `source`, `source_id`, `license`, `city`, `fetched` (+ `trail_m`/`sac`/`ele` у safe-режимі, `verdi` для Naturbase, `name_generic`, `image`, `image_wikidata`).
+
+#### Геопошук фото (шлях 2) — чому такі вузькі критерії
+Після правила «POI ≠ будинок» церкви (носії тега `wikidata`) пішли з POI-шару → на 70 POI лишився **1** тег `wikidata`, тобто шлях (1) на природних POI майже не працює. Геопошук це частково компенсує, але **легко чіпляє фото сусіднього об'єкта**. Живою розвідкою по 70 POI зафіксовано:
+
+| Кандидат | Чому НЕ беремо |
+|---|---|
+| `Klovetinden` → `Masdalskloven` (fjell, **39 м**) | інший об'єкт → «мала відстань + сумісний тип» БЕЗ звіряння назви дає хибне фото |
+| `Straumshamn, badeplass` → `Straumshamn` (**назва збігається**) | її P18 = фото **кірхи** → самого збігу назви теж не досить |
+| радіус 2,5 км замість 0,5 | **жодного** нового правильного збігу, лише шум |
+
+Тому: **іменований POI** — нормалізована назва == label сутності **І** тип `P31` (з підкласами `P279*`) сумісний з категорією; **генерична назва** (Utsiktspunkt/Gapahuk/Badeplass — звіряти нічого) — лише ≤150 м **І** сумісний тип. Сумнівно → **без фото**. Запити батчаться (`VALUES`, 10 центрів на запит), retry на 429/503; WDQS недоступний → тихо без фото. ⚠️ **описовий User-Agent обов'язковий** (WDQS і Commons інакше 403).
+**Реальний вихід на Volda+Ørsta: 3/70 з фото** (тег 1 + геопошук 2: Helgehornet, Rotsethornet). Мало — бо тутешні вершини просто не мають Wikidata-сутностей із P18; це стеля даних, а не критеріїв.
+
+### 3. Актуальний результат (Volda+Ørsta)
+**70 POI** — peak 26 · badeplass 15 · viewpoint 14 · shelter 7 · cultural 6 · hut 2; **7 міських / 63 природних**.
+- Правило «POI ≠ будинок» викинуло **14** (13 церков лишаються на карті **фіолетовими будинками** — розкриваються reveal-механікою, не «збиранням»).
+- Safety-гейт відсіяв **206** природних кандидатів (переважно вершини > 1000 м або `sac` ≥ T3).
+
+### ⚠️ Пастки
+- **Windows-консоль cp1252** ламає друк українського/норвезького виводу → запускати з `PYTHONIOENCODING=utf-8`.
+- **Nasjonal Turbase (DNT API) — МЕРТВИЙ:** `api.nasjonalturbase.no` → 404, дев-портал не існує, сам DNT пише, що відкритий доступ закрито. Джерело **хижок** = OSM (3 об'єкти в Volda/Ørsta), пізніше — Kartverket SSR.
+- **Turrutebasen** (CC BY 4.0, uuid `d1422d17-6d95-4ef1-96ab-8af31744dd63`) — це джерело для **СТЕЖОК** (лінія-reveal, ще не збудовано); як джерело хижок марне (1 хижка на весь Sunnmøre).
+- Повний safety-gate для природних POI у проді (varsom/yr/SOS) — **реліз-гейт** (D34), не тест-гейт; на тесті пускаємо лише авто-безпечне + ухвалене людиною.
 
 ## Продакшн-TODO (D31)
 - **Eligibility → Elveg ✅ ЗРОБЛЕНО (Варіант B: Elveg + OSM-bridge).** Тайли-`accessible` рахуються з Kartverket NVDB Vegnett Pluss + OSM-footpath-bridge (нуль recall-регресії). ⚠️ **Pipeline-vs-runtime розбіжність:** offline-тайли на CDN несуть Elveg-eligibility, але **runtime on-demand (D24, USE_CDN=false / Overpass) на девайсі й далі рахує accessible з OSM-highways** — Elveg там немає. Повне вирівнювання — коли Elveg-мережа теж поїде pre-hosted. Прибрати OSM-bridge, коли (а) геометрія → CC-BY (FKB) І (б) Elveg домігрує `sti`/`traktorveg` (~2027), або додати Turrutebasen (природний шар).
