@@ -47,7 +47,8 @@ python fetch_tettsteder.py tettsteder.gml           # default рік=2025, bbox=
 
 ### 3. Join → тайли (Matrikkelen + OSM-геометрія + Elveg-eligibility + Tettsteder → 0.02°)
 ```
-python build_tiles.py OUTDIR REF_LAT [--elveg=e1.gml,e2.gml] [--osm-bridge] [--tettsteder=t.gml] [--region=…] [--kommuner=…] GML1 OSM1 [GML2 OSM2 ...]
+python build_tiles.py OUTDIR REF_LAT [--elveg=e1.gml,e2.gml] [--osm-bridge] [--tettsteder=t.gml] [--region=…]
+                                     [--kommuner=… | --pairs=list.txt] [--simplify-m=15] GML1 OSM1 [GML2 OSM2 ...]
 # продакшн (Volda+Ørsta, Elveg + OSM-bridge — Варіант B, D31; + Tettsteder P20; + kommune-тег P30):
 python build_tiles.py ./tiles 62.15 \
   --elveg=1577NVDBVegnettPluss.gml,1520NVDBVegnettPluss.gml --osm-bridge \
@@ -62,6 +63,28 @@ python build_tiles.py ./tiles 62.15 \
 має точно збігатися з кількістю пар, інакше `AssertionError`. Мапа `building_id → kommune` будується під час читання
 пар; id глобально унікальні (OSM way-id), колізій між комунами немає.
 
+**`--pairs=list.txt` — масштаб фюльке/країни.** 27 комун MR = 54 позиційні аргументи + довжелезний `--kommuner`;
+замість цього — файл, по рядку на комуну. Позиційний виклик і `--kommuner` **лишаються робочими** (звірено: вихід
+байт-у-байт однаковий); `--pairs` із ними взаємовиключний (падає з поясненням).
+```
+# gen/pairs_mr.txt — KOD:Назва:matrikkelen.gml:osm.json[:elveg.gml]
+# `#` — коментар (і хвостовий теж), порожні рядки пропускаються
+1577:Volda:volda.gml:osm_volda.json:1577NVDBVegnettPluss.gml
+1520:Ørsta:orsta.gml:osm_orsta.json:1520NVDBVegnettPluss.gml
+1508|Ålesund|C:\data\1508.gml|C:\data\osm_1508.json     # `|` — коли шляхи абсолютні
+```
+* Роздільник — `:`, але **не той, за яким іде `/` або `\`**, тож `C:\data\volda.gml` не ріжеться на диску.
+  Якщо в рядку є `|`, роздільником стає **тільки** `|` (мішати в одному рядку не можна).
+* П'яте поле (Elveg) необов'язкове; воно **доповнює** `--elveg=`, не замінює.
+* Відносні шляхи шукаються спершу від cwd, потім від каталогу самого списку.
+
+**`--simplify-m=15` (деф.) — спрощення кілець `tettsteder.geojson`.** Застосунок качає цей файл **цілком**, а SSB
+дає кільця з кроком вершин **2,6 м** (растрова «сходинка»); на MR це 677 тис. вершин = **13,4 МБ**. Douglas-Peucker
+15 м → **0,4 МБ** (2,6% вершин), і кордон, який P20 малює **лінією**, візуально той самий: у поселень >1 км² площа
+змінюється на **0,4-1,0%**. Спрощується **тільки вихідна геометрія** — тег `tettsted_id` рахується по **точних**
+кільцях, тож приписування будівель не зачіпається (звірено: 0 різниць на 229 500 будівлях). Для дрібних полігонів
+eps автоматично обмежується 1/20 їх розміру, щоб клаптик 100×100 м не «розчинився». `--simplify-m=0` — вимкнути.
+
 Вихід: `area_{la}_{lo}.geojson` (props: `building_id`=`m<bygningsnummer>`|`w<osmid>`, `type` [6 категорій], `accessible` [D6], **`tettsted_id`** [P20, tett_nr або відсутній=сільське], **`kommune`** [P30, рядок-kommunenummer напр. `"1577"`; відсутній лише якщо невідомо]) + `manifest.json` (P18, per-регіон; **+ блок `byKommune`** [P30] — `{КОД: {name, total, accessible, byType:{кат:{total,accessible}}}}` ПОРЯД із наявними `total`/`accessible`/`byType`, наявні не змінюються) + **`tettsteder.geojson`** (P20: межі + per-tettsted `total`/`accessible`/`byType`; **+ `kommune`/`kommune_name`** [P30] — **мажоритарна** комуна будівель цього поселення, ties → менший код; лише data-backed поселення).
 Ключ тайла ЗБІГАЄТЬСЯ з `AreaCache.keyFor` (0.02°) — тайли лягають у наявний on-demand механізм.
 ⚠️ **Після регенерації Denis має очистити кеш зон на девайсі** (`filesDir/areas`) — старі кешовані тайли без `tettsted_id`/`kommune` інакше лишаться (D24: «раз стягнули — назавжди»).
@@ -69,8 +92,10 @@ python build_tiles.py ./tiles 62.15 \
 
 ### 4. Gzip (R2 сам НЕ стискає — передстискаємо; bash-цикл повільний на Windows → Python)
 ```
-python -c "import gzip,glob,os,shutil; os.makedirs('tiles-gz',exist_ok=True); [shutil.copyfileobj(open(f,'rb'),gzip.open('tiles-gz/'+os.path.basename(f),'wb',9)) for f in glob.glob('tiles/area_*.geojson')]"
+python -c "import gzip,glob,os,shutil; os.makedirs('tiles-gz',exist_ok=True); [shutil.copyfileobj(open(f,'rb'),gzip.GzipFile('tiles-gz/'+os.path.basename(f),'wb',9,mtime=0)) for f in glob.glob('tiles/area_*.geojson')]"
 ```
+⚠️ **`mtime=0` обов'язковий.** Без нього gzip пише поточний час у заголовок, байти щоразу інакші —
+і пропуск незмінених у `upload_r2.py` (звірка ETag) не спрацьовує: усе заливається наново.
 
 ### 5. Заливка на Cloudflare R2
 Cloudflare: R2 → Create bucket `streif-tiles` (Location hint WEUR, Standard) → Settings → Public Development URL → Enable.
@@ -78,10 +103,22 @@ API-token: Account API Token, Object Read & Write, scope=streif-tiles → Access
 ```
 cp tiles/manifest.json tiles/tettsteder.geojson tiles-gz/   # обидва P18+P20-файли поруч із передстисненими тайлами
 R2_ACCOUNT_ID=... R2_ACCESS_KEY=... R2_SECRET_KEY=... \
-  python upload_r2.py ./tiles-gz
+  python upload_r2.py ./tiles-gz [--workers=12] [--force] [--dry-run] [--verify=KEY]
 # area_*.geojson: Content-Encoding: gzip (передстиснені); manifest.json: uncompressed;
-# tettsteder.geojson: gzip у коді upload_r2 (виключений з area-glob, щоб не віддати битим)
+# tettsteder.geojson + poi.geojson: gzip у коді upload_r2 (виключені з area-glob, щоб не віддати битими)
 ```
+**Паралельно + пропуск незмінених.** Один прохід `list_objects_v2` збирає ETag усіх наявних об'єктів;
+далі кожен файл заливається лише якщо його MD5 ≠ ETag. Заливка — `ThreadPoolExecutor` (свій boto3-клієнт
+на потік). На 418 об'єктах із латентністю 150 мс: **послідовно 63 с → 5,4 с при `--workers=12` (x11,8)**;
+екстраполяція на 3400 тайлів фюльке — **~20 хв → ~1 хв**, а повторний прогін після дрібної правки
+заливає лише змінене (звірено на фейковому S3: змінили 1 тайл → `put=1`, решта 417 пропущені).
+
+| Прапорець | Що робить |
+|---|---|
+| `--workers=N` (12) | паралельні заливки. 24 ще прискорює, 32+ ловить `SlowDown` від R2 |
+| `--force` | залити все, не читаючи інвентар бакета |
+| `--dry-run` | показати, що змінилось, нічого не заливаючи (креденшли все одно потрібні — читаємо перелік) |
+| `--verify=KEY` | HEAD цього ключа наприкінці (деф. — перший area-тайл прогону, а не захардкожений) |
 
 ### 5b. `retag_kommune.py` — РАЗОВИЙ міст: перетегувати вже опубліковані тайли (P30)
 
@@ -134,6 +171,45 @@ buildConfigField("boolean", "USE_CDN", "true")
 buildConfigField("String", "CDN_BASE_URL", "\"https://pub-<hash>.r2.dev\"")
 ```
 `CdnGeoJsonAreaSource` будує `$CDN_BASE_URL/area_{la}_{lo}.geojson`. `USE_CDN=false` → runtime-Overpass (dogfood).
+
+## Масштаб ФЮЛЬКЕ (Møre og Romsdal, 27 комун) — репетиція перед національним
+
+**27 комун fylke 15:** 1505 Kristiansund · 1506 Molde · 1508 Ålesund · 1511 Vanylven · 1514 Sande ·
+1515 Herøy · 1516 Ulstein · 1517 Hareid · 1520 Ørsta · 1525 Stranda · 1528 Sykkylven · 1531 Sula ·
+1532 Giske · 1535 Vestnes · 1539 Rauma · 1547 Aukra · 1554 Averøy · 1557 Gjemnes · 1560 Tingvoll ·
+1563 Sunndal · 1566 Surnadal · 1573 Smøla · 1576 Aure · 1577 Volda · 1578 Fjord · 1579 Hustadvika ·
+1580 Haram.
+
+**Звідки брати дані на 27 комун** (перевірено живими запитами 2026-07-19):
+
+| Джерело | Як | Пастка |
+|---|---|---|
+| Matrikkelen | прямий per-kommune URL працює для всіх 27 (Ø→O, Å→A, пробіл→`_`); разом 33,7 МБ | **Fylke-файл НЕ брати** — усередині один злитий GML без поділу по комунах. Надійніше спарсити відкритий лістинг `nedlasting.geonorge.no/geonorge/Basisdata/MatrikkelenBygning/GML/` і зіставити за `_{kommunenr}_`, ніж вгадувати транслітерацію |
+| Elveg (NVDB Vegnett Pluss) | **пошта НЕ потрібна** (§2b застарів): відкритий каталог `nedlasting.geonorge.no/geonorge/Samferdsel/NVDB-VegnettPluss/GML/`, файл `Samferdsel_15_More_og_Romsdal_5973_NVDB-VegnettPluss_GML.zip` (68 МБ) містить **рівно 27** записів `{kommunenr}NVDBVegnettPluss.gml` — уже per-kommune | — |
+| OSM | Geofabrik `europe/norway/vestlandet-latest.osm.pbf` (256 МБ) покриває всі 27 комун MR | Geofabrik віддає **soft-404** (HTTP 200 + ~9,6 КБ HTML) на неіснуючі імена — перевіряти **за розміром**. Окремого MR-екстракту немає. Overpass на 27 комун ненадійний (Ålesund: 504 на overpass-api.de) |
+| SSB Tettsteder | той самий WFS, bbox на все фюльке → 105 поселень / 424 полігони / 677 тис. вершин | — |
+
+**Заміряно на синтетиці масштабу фюльке** (229 500 будівель у справжніх межах поселень MR, 27 «комун»,
+Python 3.14, Windows): **123,7 с → 36,6 с**, пік RSS **0,80 ГБ**, 2362 тайли (61 МБ до gzip).
+Пофічний diff старого й нового виходу на однаковому вході: `geometry` **0** різниць, `type` **0**,
+`tettsted_id` **0**, `kommune` **0**, `accessible` — **5 із 229 500** (0,002%, свідома корекція, нижче).
+
+**Що саме прискорилось.** Приписування tettsted (`locate_tettsted`) було лінійним скан­уванням усіх
+поселень із неіндексованим PIP по кільцю на 8-32 тис. вершин: **0,69-0,92 мс на будівлю** (заміряно на
+22 645 продакшн-центроїдах) = 2,6-3,5 хв на фюльке і під годину на країні. Тепер грід-індекс полігонів
+(`tett_grid`, клітинка 0,02°) + **смуговий індекс ребер** (`band_index`, смуга `TBAND`=0,0002°≈22 м,
+у смугах лежать **індекси** ребер у `array('i')`, а не копії координат — інакше на нац.масштабі індекс
+з'їв би гігабайти): **8,0-8,8 мкс на будівлю, x78-x88**, RAM індексу +5,4 МБ на всі 105 поселень MR.
+Ребро в смугах орієнтоване так само, як у старому `pip()`, і тестується тим самим виразом → результат
+**побітово той самий** (0 розбіжностей на 22 645 продакшн-будівлях і на 229 500 синтетичних).
+
+**⚠️ `accessible` після повного регену трохи зміниться — це виправлення, а не регресія.**
+`compute_accessible` більше не бере одну опорну широту на весь регіон: `kLon` рахується **за широтою
+будівлі**. Стара схема на фюльке помилялася на **±3,6%** буфера (±1 м із 28), а на національному
+діапазоні 58-71°N — **до +43%** (тобто «доступним» ставало те, що за 39 м від дороги). Звірено з
+геодезичним еталоном (`pyproj.Geod`): нова реалізація збігається у **всіх** тест-кейсах, стара
+помиляється на 6 із 18. Ціна — **5 будівель із 229 500** змінили прапорець (напрямок узгоджений із
+широтою: південніше опорної `True→False`, північніше `False→True`).
 
 ## bygningstype → 6 категорій Streif (у `build_tiles.py::category`)
 | Код | Категорія |
