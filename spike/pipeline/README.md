@@ -47,17 +47,24 @@ python fetch_tettsteder.py tettsteder.gml           # default рік=2025, bbox=
 
 ### 3. Join → тайли (Matrikkelen + OSM-геометрія + Elveg-eligibility + Tettsteder → 0.02°)
 ```
-python build_tiles.py OUTDIR REF_LAT [--elveg=e1.gml,e2.gml] [--osm-bridge] [--tettsteder=t.gml] [--region=…] GML1 OSM1 [GML2 OSM2 ...]
-# продакшн (Volda+Ørsta, Elveg + OSM-bridge — Варіант B, D31; + Tettsteder P20):
+python build_tiles.py OUTDIR REF_LAT [--elveg=e1.gml,e2.gml] [--osm-bridge] [--tettsteder=t.gml] [--region=…] [--kommuner=…] GML1 OSM1 [GML2 OSM2 ...]
+# продакшн (Volda+Ørsta, Elveg + OSM-bridge — Варіант B, D31; + Tettsteder P20; + kommune-тег P30):
 python build_tiles.py ./tiles 62.15 \
   --elveg=1577NVDBVegnettPluss.gml,1520NVDBVegnettPluss.gml --osm-bridge \
   --tettsteder=tettsteder.gml --region="Volda+Ørsta" \
+  --kommuner=1577:Volda,1520:Ørsta \
   volda.gml osm_volda.json  orsta.gml osm_orsta.json
 # без --elveg → D6 рахується з OSM-highways (dogfood-фолбек); без --tettsteder → P20-файл не емітиться
+# без --kommuner → тег комуни не пишеться, вихід ІДЕНТИЧНИЙ дореформеному (зворотна сумісність)
 ```
-Вихід: `area_{la}_{lo}.geojson` (props: `building_id`=`m<bygningsnummer>`|`w<osmid>`, `type` [6 категорій], `accessible` [D6], **`tettsted_id`** [P20, tett_nr або відсутній=сільське]) + `manifest.json` (P18, per-регіон) + **`tettsteder.geojson`** (P20: межі + per-tettsted `total`/`accessible`/`byType`; лише data-backed поселення).
+**`--kommuner=КОД:Назва,…` (P30).** Один запис на КОЖНУ пару вхідних файлів, **у тому самому порядку**, що й пари
+(вхід і так per-kommune, тож комуна відома з **індексу пари** — ні PIP, ні нових джерел не треба). Кількість записів
+має точно збігатися з кількістю пар, інакше `AssertionError`. Мапа `building_id → kommune` будується під час читання
+пар; id глобально унікальні (OSM way-id), колізій між комунами немає.
+
+Вихід: `area_{la}_{lo}.geojson` (props: `building_id`=`m<bygningsnummer>`|`w<osmid>`, `type` [6 категорій], `accessible` [D6], **`tettsted_id`** [P20, tett_nr або відсутній=сільське], **`kommune`** [P30, рядок-kommunenummer напр. `"1577"`; відсутній лише якщо невідомо]) + `manifest.json` (P18, per-регіон; **+ блок `byKommune`** [P30] — `{КОД: {name, total, accessible, byType:{кат:{total,accessible}}}}` ПОРЯД із наявними `total`/`accessible`/`byType`, наявні не змінюються) + **`tettsteder.geojson`** (P20: межі + per-tettsted `total`/`accessible`/`byType`; **+ `kommune`/`kommune_name`** [P30] — **мажоритарна** комуна будівель цього поселення, ties → менший код; лише data-backed поселення).
 Ключ тайла ЗБІГАЄТЬСЯ з `AreaCache.keyFor` (0.02°) — тайли лягають у наявний on-demand механізм.
-⚠️ **Після регенерації Denis має очистити кеш зон на девайсі** (`filesDir/areas`) — старі кешовані тайли без `tettsted_id` інакше лишаться (D24: «раз стягнули — назавжди»).
+⚠️ **Після регенерації Denis має очистити кеш зон на девайсі** (`filesDir/areas`) — старі кешовані тайли без `tettsted_id`/`kommune` інакше лишаться (D24: «раз стягнули — назавжди»).
 **A/B-гейт перед перезаливкою:** `elveg_ab.py` — порівнює accessible% Elveg-vs-OSM на Volda, ловить регресію (будинок, доступний лише пішо-стежкою, що OSM ловить, а Elveg — ні).
 
 ### 4. Gzip (R2 сам НЕ стискає — передстискаємо; bash-цикл повільний на Windows → Python)
@@ -75,6 +82,50 @@ R2_ACCOUNT_ID=... R2_ACCESS_KEY=... R2_SECRET_KEY=... \
 # area_*.geojson: Content-Encoding: gzip (передстиснені); manifest.json: uncompressed;
 # tettsteder.geojson: gzip у коді upload_r2 (виключений з area-glob, щоб не віддати битим)
 ```
+
+### 5b. `retag_kommune.py` — РАЗОВИЙ міст: перетегувати вже опубліковані тайли (P30)
+
+> ⚠️ **Це не канон.** Канонічний шлях додавання комуни — прапорець `build_tiles.py --kommuner=…`
+> (крок 3), де комуна відома з **індексу пари** вхідних файлів. `retag_kommune.py` — **разовий**
+> інструмент, лишений у репо як задокументований прецедент; при наступному **повному регені**
+> користуватися `--kommuner`, а не ним.
+
+**Навіщо знадобився.** Вхідні GML (Matrikkelen/OSM/Elveg) зникли з тимчасових тек, а перезавантаження
+дороге (Elveg — через order-API з поштою) **і дало б інший зріз даних** (OSM живий, Matrikkelen
+оновлюється) → розійшлося б із теперішнім продакшном по кількості будівель і `accessible`.
+Перетегування натомість бере **самі продакшн-тайли з CDN** і дописує лише `kommune`, зберігаючи
+**точну парність** із продакшном: ті самі 22 645 будівель, 19 723 accessible (Elveg-based),
+ті самі `building_id` і `tettsted_id`.
+
+**Чим відрізняється від `--kommuner`.** Походження будівлі з готового тайла вже не відновити, тож
+комуна визначається **post-hoc — PIP по центроїду кільця** в **офіційних межах Kartverket**
+(`ws.geonorge.no/kommuneinfo/v1/kommuner/{nr}/omrade?utkoordsys=4258` — відкритий GET, без ключа,
+GeoJSON MultiPolygon у lon/lat; дірки й мультиполігони враховано). Будівлі, що не влучили в жодну
+межу (прибережна генералізація), пробуються на **найближчу межу в межах `--tol-m`** (150 м);
+не влучили і там → лишаються **без тега** (краще без, ніж хибно).
+
+```
+PYTHONIOENCODING=utf-8 \
+python retag_kommune.py OUTDIR --cache=./cdn-cache --kommuner=1577:Volda,1520:Ørsta [--tol-m=150]
+```
+Все мережеве (416 тайлів + `tettsteder.geojson` + межі комун) **кешується на диск** у `--cache` —
+повторний запуск сервіси не смикає. Вихід збігається з тим, що чекає `upload_r2.py`:
+`area_*.geojson` **передстиснені gzip** (як крок 4), `manifest.json` і `tettsteder.geojson` — **плоскі**.
+
+Дописується рівно те саме, що й у `--kommuner`: `kommune` у кожну будівлю (решта props недоторкана),
+блок `byKommune` **поряд** із наявними ключами manifest, `kommune`/`kommune_name` на кожен tettsted
+(мажоритарна комуна його будівель, ties → менший код).
+
+**Звірка (виводить сам скрипт; факт прогону 2026-07-19):**
+```
+byKommune сума total      : 22645 == manifest.total       OK
+byKommune сума accessible : 19723 == manifest.accessible  OK
+  1577 Volda: 10812/9180 · 1520 Ørsta: 11833/10543
+  byType по комунах у сумі == загальний byType (6/6 категорій)  OK
+без kommune: 0 · fallback-за-відстанню: 0 · tettsteder з kommune: 5/5
+тайли після gzip: 416 файлів, 22645 фіч, битих 0                OK
+```
+Тобто **жодна** будівля не потребувала допуску 150 м — усі 22 645 впали строго всередину офіційних меж.
 
 ### 6. Увімкнути в застосунку
 `app/build.gradle.kts` defaultConfig:

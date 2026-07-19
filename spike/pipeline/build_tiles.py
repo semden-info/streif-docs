@@ -237,22 +237,48 @@ def main():
     #   --elveg=…    : D6-eligibility з Kartverket Elveg (замість OSM highways). Кома-розділені GML.
     #   --osm-bridge : додати OSM footway/path/track до Elveg (закрити sti-провал; повертає ODbL по вег-шару).
     #   --tettsteder=… : SSB Tettsteder GML (P20) — межі поселень для per-tettsted Coverage-% + boundary-шар.
-    elveg_paths, osm_bridge, region, tett_path, rest = [], False, "", "", []
+    #   --kommuner=…   : P30 — код:назва на КОЖНУ пару вхідних файлів, у тому самому порядку
+    #                    (напр. 1577:Volda,1520:Ørsta). Комуна відома з індексу пари — вхід і так per-kommune,
+    #                    тож ні PIP, ні нових джерел не треба. Не переданий → тег не пишеться (зворотна сумісність).
+    elveg_paths, osm_bridge, region, tett_path, kommuner, rest = [], False, "", "", [], []
     for a in sys.argv[1:]:
         if a.startswith("--elveg="): elveg_paths = [p for p in a[len("--elveg="):].split(",") if p]
         elif a == "--osm-bridge": osm_bridge = True
         elif a.startswith("--region="): region = a[len("--region="):]   # P18: назва регіону в manifest
         elif a.startswith("--tettsteder="): tett_path = a[len("--tettsteder="):]   # P20
+        elif a.startswith("--kommuner="):                                          # P30
+            for spec in a[len("--kommuner="):].split(","):
+                spec = spec.strip()
+                if not spec: continue
+                code, _, kname = spec.partition(":")
+                kommuner.append((code.strip(), kname.strip()))
         else: rest.append(a)
     outdir, ref_lat = rest[0], float(rest[1])
     pairs = rest[2:]
     assert len(pairs) % 2 == 0 and pairs, "need OUTDIR REF_LAT [--elveg=…] then GML OSM pairs"
+    npairs = len(pairs) // 2
+    if kommuner:
+        assert len(kommuner) == npairs, (
+            f"--kommuner: {len(kommuner)} записів, а пар вхідних файлів {npairs} — "
+            f"треба рівно один код:назва на пару, у тому самому порядку")
     os.makedirs(outdir, exist_ok=True)
     mats, buildings, osm_hw = [], [], []
+    kom_of = {}        # P30: osm building_id -> kommunenummer (з ІНДЕКСУ пари, без PIP)
+    kom_name = dict(kommuner)
     for i in range(0, len(pairs), 2):
         m = parse_matrikkelen(pairs[i])
         b, h = parse_osm(pairs[i + 1])
-        print(f"  {os.path.basename(pairs[i])}: Matrikkelen={len(m)} OSM buildings={len(b)} highways={len(h)}")
+        if kommuner:
+            kcode = kommuner[i // 2][0]
+            dup = 0
+            for bid, _ring, _ot in b:
+                if bid in kom_of: dup += 1          # id-колізія між комунами (не має бути: OSM way-id глобальні)
+                kom_of[bid] = kcode
+            print(f"  {os.path.basename(pairs[i])}: Matrikkelen={len(m)} OSM buildings={len(b)} "
+                  f"highways={len(h)} kommune={kcode} ({kom_name[kcode]})"
+                  + (f" ⚠ {dup} id-колізій перезаписано" if dup else ""))
+        else:
+            print(f"  {os.path.basename(pairs[i])}: Matrikkelen={len(m)} OSM buildings={len(b)} highways={len(h)}")
         mats += m; buildings += b; osm_hw += h
     # D31: eligibility-мережа = офіційний Elveg (CC-BY), якщо задано; інакше OSM-highways (dogfood-фолбек)
     if elveg_paths:
@@ -311,6 +337,8 @@ def main():
         else:
             fid = bid; ftype = ot
         props = {"building_id": fid, "type": ftype, "accessible": accessible.get(bid, True)}
+        kc = kom_of.get(bid)                                         # P30: тег комуни (з індексу пари)
+        if kc: props["kommune"] = kc                                 # невідома комуна → без тега
         if tett:                                                     # P20: тег поселення (Android читає прямо з фічі)
             tid = locate_tettsted(cxlon, cylat, tett)
             if tid: props["tettsted_id"] = tid                       # поза всіма tettsteder → без тега (сільське)
@@ -343,6 +371,27 @@ def main():
     manifest["byType"] = byType
     manifest["total"] = tot_all
     manifest["accessible"] = acc_all
+    # P30: byKommune — ті самі лічильники, але в розрізі комуни (ПОРЯД із наявними, наявні не чіпаємо).
+    # Комуни з --kommuner присутні завжди, навіть із нулями (щоб Android не бачив «зникла комуна»).
+    if kommuner:
+        byKom = {code: {"name": nm, "total": 0, "accessible": 0,
+                        "byType": {c: {"total": 0, "accessible": 0} for c in CATS}}
+                 for code, nm in kommuner}
+        for feats in tiles.values():
+            for f in feats:
+                p = f["properties"]; kc = p.get("kommune")
+                if not kc: continue
+                e = byKom.setdefault(kc, {"name": kom_name.get(kc, ""), "total": 0, "accessible": 0,
+                                          "byType": {c: {"total": 0, "accessible": 0} for c in CATS}})
+                d = e["byType"].setdefault(p["type"], {"total": 0, "accessible": 0})
+                e["total"] += 1; d["total"] += 1
+                if p["accessible"]: e["accessible"] += 1; d["accessible"] += 1
+        manifest["byKommune"] = byKom
+        kom_sum = sum(e["total"] for e in byKom.values())
+        print("byKommune (P30): " + " · ".join(
+            f"{c} {e['name']} {e['total']}/{e['accessible']}" for c, e in byKom.items())
+            + f" | сума {kom_sum}/{tot_all}"
+            + ("" if kom_sum == tot_all else f" ⚠ {tot_all - kom_sum} буд. без тега комуни"))
     json.dump(manifest, open(os.path.join(outdir, "manifest.json"), "w", encoding="utf-8"),
               ensure_ascii=False, indent=1)
     print(f"manifest: region='{region}' total={tot_all} accessible={acc_all} "
@@ -360,19 +409,27 @@ def main():
                 if not tid: continue
                 e = tc.setdefault(tid, {"name": tname.get(tid, ""), "pop": tpop.get(tid, 0),
                                         "total": 0, "accessible": 0,
-                                        "byType": {c: {"total": 0, "accessible": 0} for c in CATS}})
+                                        "byType": {c: {"total": 0, "accessible": 0} for c in CATS},
+                                        "kom": {}})
                 d = e["byType"].setdefault(p["type"], {"total": 0, "accessible": 0})
                 e["total"] += 1; d["total"] += 1
                 if p["accessible"]: e["accessible"] += 1; d["accessible"] += 1
+                kc = p.get("kommune")                       # P30: голоси на мажоритарну комуну поселення
+                if kc: e["kom"][kc] = e["kom"].get(kc, 0) + 1
         feats_out = []
         for t in tett:
             c = tc.get(t["id"])
             if not c: continue
             coords = [[[[round(x, 6), round(y, 6)] for x, y in ring]] for ring, _bb in t["polys"]]
+            props = {"tett_nr": t["id"], "name": c["name"], "pop": c["pop"],
+                     "total": c["total"], "accessible": c["accessible"], "byType": c["byType"]}
+            if c["kom"]:                                    # P30: мажоритарна комуна (ties → менший код, детермінізм)
+                kc = max(sorted(c["kom"]), key=lambda k: c["kom"][k])
+                props["kommune"] = kc
+                props["kommune_name"] = kom_name.get(kc, "")
             feats_out.append({"type": "Feature",
                 "geometry": {"type": "MultiPolygon", "coordinates": coords},
-                "properties": {"tett_nr": t["id"], "name": c["name"], "pop": c["pop"],
-                               "total": c["total"], "accessible": c["accessible"], "byType": c["byType"]}})
+                "properties": props})
         tfc = {"type": "FeatureCollection", "region": region, "generated": manifest["generated"],
                "attribution": "© Statistisk sentralbyrå (Tettsteder, NLOD)", "features": feats_out}
         json.dump(tfc, open(os.path.join(outdir, "tettsteder.geojson"), "w", encoding="utf-8"),
