@@ -66,12 +66,13 @@
   <!-- ============================= NORSK (BOKMÅL) ============================= -->
   <section class="lang active" id="nb" lang="nb">
     <h1>Personvernerklæring for Streif</h1>
-    <p class="meta">Versjon 1.0 — sist oppdatert 20. juli 2026</p>
+    <p class="meta">Versjon 1.1 — sist oppdatert 20. juli 2026</p>
 
     <div class="lede">
-      <p><strong>Kort fortalt:</strong> Streif lagrer turene dine <strong>på telefonen din</strong>. Det finnes ingen
-      brukerkonto, ingen innlogging og ingen server som mottar bevegelsene dine. GPS-sporet ditt forlater
-      aldri enheten. Appen har ingen annonser, ingen analyseverktøy og ingen sporings-SDK-er.</p>
+      <p><strong>Kort fortalt:</strong> Streif lagrer turene dine <strong>på telefonen din</strong>. Det kreves ingen
+      konto, og ingen server hos oss mottar bevegelsene dine. GPS-sporet ditt forlater aldri enheten. Appen
+      har ingen annonser, ingen analyseverktøy og ingen sporings-SDK-er. (Du kan valgfritt logge inn med
+      Google for å sikkerhetskopiere framgangen din til din egen Google Disk – se punkt 10.)</p>
       <p>Det eneste som går ut på nettet, er forespørsler om <em>kartdata</em> — og de avslører omtrent
       hvor i landet du ser på kartet, på samme måte som enhver annen kartapp.</p>
     </div>
@@ -155,7 +156,8 @@
 
     <h2>6. Hva Streif <em>ikke</em> gjør</h2>
     <ul>
-      <li>Ingen brukerkonto, ingen innlogging, ingen e-postadresse samles inn.</li>
+      <li>Ingen konto kreves – appen fungerer fullt ut uten innlogging. Den valgfrie sikkerhetskopieringen
+      (punkt 10) er det eneste som bruker Google-innlogging, og den er avslått som standard.</li>
       <li>Ingen annonser og ingen annonse-ID.</li>
       <li>Ingen analyse-, statistikk- eller krasjrapporteringsverktøy (ingen Firebase, ingen Crashlytics,
       ingen tredjeparts-SDK-er for sporing).</li>
@@ -170,6 +172,9 @@
       <li><strong>Slette alt:</strong> Innstillinger → Apper → Streif → Lagring → «Tøm lagring», eller
       avinstaller appen. Da forsvinner databasen med alle avdekkede bygninger og turøkter permanent.</li>
       <li>Appen har foreløpig ingen egen «slett alt»-knapp inne i appen. Den kommer i en senere versjon.</li>
+      <li><strong>Sikkerhetskopi:</strong> har du slått på sikkerhetskopiering (punkt 10), kan du slå den av
+      i Innstillinger for å stoppe skriving til Google Disk. Kopien ligger i din egen Google-konto, så du
+      kontrollerer den selv.</li>
       <li>Vi kan ikke slette dataene dine for deg — vi har dem ikke.</li>
     </ul>
 
@@ -187,13 +192,28 @@
     <p>Streif er ikke rettet mot barn og samler ikke bevisst inn opplysninger om barn. Appen har ingen
     konto, ingen sosiale funksjoner og ingen kommunikasjon mellom brukere.</p>
 
-    <h2>10. Planlagte funksjoner</h2>
-    <p>Vi jobber med en valgfri sikkerhetskopiering av framgangen din:
-    <strong>innlogging med Google og lagring i Google Drive App Folder</strong>. Dersom dette kommer, vil det
-    gjelde at funksjonen er <em>frivillig og avslått som standard</em>, at sikkerhetskopien lagres i
-    <em>din egen</em> Google-konto (vi verken hoster eller leser den), at vi kun mottar det som trengs for
-    å identifisere kontoen mot Drive, og at fortsatt <em>ingen</em> GPS-spor lagres. Denne erklæringen blir
-    oppdatert før funksjonen slås på, og du vil bli spurt om samtykke i appen.</p>
+    <h2>10. Valgfri sikkerhetskopiering til Google Drive</h2>
+    <p>Du kan – helt frivillig – sikre framgangen din ved å <strong>logge inn med Google og lagre en
+    sikkerhetskopi i Google Drive App Folder</strong>. Funksjonen er <em>avslått som standard</em> og
+    tilbys først inne i Innstillinger (aldri ved oppstart) – appen fungerer fullt ut uten den.</p>
+    <ul>
+      <li><strong>Hva som sikkerhetskopieres:</strong> bare framgangen du allerede ser i appen – avdekkede
+      bygninger, besøkte turmål, fullførte samlinger og turøkt-sammendrag (tidspunkt og distanse).
+      <strong>GPS-sporet ditt sikkerhetskopieres aldri</strong> – det lagres ikke i appen i det hele tatt.</li>
+      <li><strong>Hvor:</strong> i <em>din egen</em> Google-konto, i en skjult app-mappe som bare Streif har
+      tilgang til (tilgangsområdet <code>drive.appdata</code>). Vi ber ikke om tilgang til resten av Google
+      Disk, og vi verken hoster eller leser sikkerhetskopien.</li>
+      <li><strong>Hva vi får vite:</strong> kun e-postadressen til Google-kontoen du velger, slik at appen
+      kan vise hvilken konto sikkerhetskopien går til. Den lagres lokalt på telefonen.</li>
+      <li><strong>Når:</strong> automatisk én gang i døgnet, men bare når telefonen lader og har nett – vi
+      vekker den aldri i lomma. Du kan også sikkerhetskopiere når som helst med et trykk.</li>
+      <li><strong>Kontroll:</strong> du kan slå av sikkerhetskopiering når som helst i Innstillinger; da
+      slutter appen å skrive til Drive. Du kan også <strong>slette kopien fra Google Disk direkte i appen</strong>
+      (Innstillinger → «Slett kopien fra Google Disk»). Kopien ligger uansett i din egen Google-konto, så du
+      har full kontroll over den.</li>
+    </ul>
+    <p>Behandlingsgrunnlaget er ditt <strong>samtykke</strong> (GDPR art. 6 nr. 1 bokstav a), gitt ved at du
+    logger inn og slår funksjonen på.</p>
 
     <h2>11. Endringer</h2>
     <p>Ved vesentlige endringer oppdaterer vi datoen øverst og beskriver endringen i appen eller i
@@ -208,12 +228,13 @@
   <!-- ================================ ENGLISH ================================ -->
   <section class="lang" id="en" lang="en">
     <h1>Privacy Policy for Streif</h1>
-    <p class="meta">Version 1.0 — last updated 20 July 2026</p>
+    <p class="meta">Version 1.1 — last updated 20 July 2026</p>
 
     <div class="lede">
-      <p><strong>In short:</strong> Streif keeps your walks <strong>on your phone</strong>. There is no user
-      account, no login, and no server that receives your movements. Your GPS track never leaves the device.
-      The app contains no ads, no analytics, and no tracking SDKs.</p>
+      <p><strong>In short:</strong> Streif keeps your walks <strong>on your phone</strong>. No account is
+      required, and no server of ours receives your movements. Your GPS track never leaves the device. The
+      app contains no ads, no analytics, and no tracking SDKs. (You may optionally sign in with Google to
+      back up your progress to your own Google Drive — see section 10.)</p>
       <p>The only thing that goes out over the network is requests for <em>map data</em> — and those reveal
       roughly which area of the map you are looking at, the same way any other map app does.</p>
     </div>
@@ -297,7 +318,8 @@
 
     <h2>6. What Streif does <em>not</em> do</h2>
     <ul>
-      <li>No user account, no login, no e-mail address collected.</li>
+      <li>No account is required — the app works fully without signing in. The optional backup (section 10)
+      is the only feature that uses Google sign-in, and it is off by default.</li>
       <li>No ads and no advertising ID.</li>
       <li>No analytics, telemetry or crash-reporting tools (no Firebase, no Crashlytics, no third-party
       tracking SDKs).</li>
@@ -312,6 +334,8 @@
       <li><strong>Delete everything:</strong> Settings → Apps → Streif → Storage → "Clear storage", or
       uninstall the app. The database with all uncovered buildings and walk sessions is then permanently gone.</li>
       <li>The app does not yet have its own in-app "delete everything" button. It is planned for a later version.</li>
+      <li><strong>Backup:</strong> if you turned on backup (section 10), turn it off in Settings to stop
+      writing to Google Drive. The copy lives in your own Google account, so you stay in control of it.</li>
       <li>We cannot delete your data for you — we do not have it.</li>
     </ul>
 
@@ -330,13 +354,28 @@
     <p>Streif is not directed at children and does not knowingly collect information about children. The app
     has no account, no social features and no communication between users.</p>
 
-    <h2>10. Planned features</h2>
-    <p>We are working on an optional backup of your progress:
-    <strong>Google Sign-In and storage in the Google Drive App Folder</strong>. If and when this ships, it will
-    be <em>optional and off by default</em>, the backup will be stored in <em>your own</em> Google account
-    (we neither host nor read it), we will receive only what is needed to identify the account against Drive,
-    and still <em>no</em> GPS tracks will be stored. This policy will be updated before the feature is enabled,
-    and you will be asked for consent in the app.</p>
+    <h2>10. Optional backup to Google Drive</h2>
+    <p>You can — entirely optionally — safeguard your progress by <strong>signing in with Google and storing
+    a backup in the Google Drive App Folder</strong>. The feature is <em>off by default</em> and is offered
+    only inside Settings (never at startup) — the app works fully without it.</p>
+    <ul>
+      <li><strong>What is backed up:</strong> only the progress you already see in the app — revealed
+      buildings, visited destinations, completed collections and walk-session summaries (time and distance).
+      <strong>Your GPS track is never backed up</strong> — it is not stored in the app at all.</li>
+      <li><strong>Where:</strong> in <em>your own</em> Google account, in a hidden app-only folder that only
+      Streif can access (the <code>drive.appdata</code> scope). We do not request access to the rest of your
+      Google Drive, and we neither host nor read the backup.</li>
+      <li><strong>What we learn:</strong> only the e-mail address of the Google account you choose, so the
+      app can show which account the backup goes to. It is stored locally on the phone.</li>
+      <li><strong>When:</strong> automatically once a day, but only while the phone is charging and online —
+      we never wake it in your pocket. You can also back up at any time with a single tap.</li>
+      <li><strong>Control:</strong> you can turn backup off at any time in Settings, which stops the app from
+      writing to Drive. You can also <strong>delete the copy from Google Drive directly in the app</strong>
+      (Settings → "Delete the copy from Google Drive"). The copy sits in your own Google account either way,
+      so you stay in full control of it.</li>
+    </ul>
+    <p>The legal basis is your <strong>consent</strong> (GDPR Art. 6(1)(a)), given by signing in and turning
+    the feature on.</p>
 
     <h2>11. Changes</h2>
     <p>For material changes we update the date at the top and describe the change in the app or in the Play
