@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Streif — Personvernerklæring / Privacy Policy</title>
+<meta name="description" content="Personvernerklæring for Streif-appen / Privacy policy for the Streif app.">
+<style>
+  :root{
+    --bg:#fbfaf8; --fg:#1b1d1c; --muted:#5c625f; --rule:#e2e0da;
+    --card:#f3f1ec; --accent:#2f6b4f; --maxw:44rem;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#141614; --fg:#e8e6e1; --muted:#9aa19c; --rule:#2a2e2b;
+           --card:#1c1f1d; --accent:#7fbb98; }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:400 17px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    padding:2rem 1.25rem 5rem;
+  }
+  main{max-width:var(--maxw); margin:0 auto}
+  h1{font-size:1.75rem; line-height:1.25; margin:0 0 .35rem; letter-spacing:-.01em}
+  h2{font-size:1.15rem; margin:2.5rem 0 .6rem; letter-spacing:-.005em}
+  h3{font-size:1rem; margin:1.6rem 0 .4rem}
+  p,li{margin:0 0 .8rem}
+  ul{padding-left:1.2rem}
+  a{color:var(--accent)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.87em;
+       background:var(--card); padding:.12em .35em; border-radius:4px; word-break:break-all}
+  .meta{color:var(--muted); font-size:.9rem; margin:0 0 1.5rem}
+  .lede{background:var(--card); border-left:3px solid var(--accent);
+        padding:1rem 1.1rem; border-radius:0 8px 8px 0; margin:1.5rem 0}
+  .lede p:last-child{margin-bottom:0}
+  hr{border:0; border-top:1px solid var(--rule); margin:3rem 0}
+  /* language switch */
+  .langbar{display:flex; gap:.5rem; margin:0 0 2rem; flex-wrap:wrap}
+  .langbar button{
+    font:inherit; font-size:.9rem; cursor:pointer; padding:.4rem .9rem;
+    border:1px solid var(--rule); background:transparent; color:var(--muted);
+    border-radius:999px; transition:.15s;
+  }
+  .langbar button[aria-pressed="true"]{background:var(--accent); color:var(--bg); border-color:var(--accent)}
+  .langbar button:hover{border-color:var(--accent)}
+  /* Without JS both languages show (progressive enhancement). */
+  .js .lang{display:none}
+  .js .lang.active{display:block}
+  table{width:100%; border-collapse:collapse; margin:0 0 1rem; font-size:.94rem; display:block; overflow-x:auto}
+  th,td{text-align:left; padding:.55rem .6rem; border-bottom:1px solid var(--rule); vertical-align:top}
+  th{font-weight:600; white-space:nowrap}
+  footer{margin-top:3rem; padding-top:1.5rem; border-top:1px solid var(--rule);
+         color:var(--muted); font-size:.88rem}
+</style>
+</head>
+<body>
+<script>document.documentElement.classList.add('js');</script>
+<main>
+
+  <div class="langbar" role="group" aria-label="Språk / Language">
+    <button type="button" data-lang="nb" aria-pressed="true">Norsk (bokmål)</button>
+    <button type="button" data-lang="en" aria-pressed="false">English</button>
+  </div>
+
+  <!-- ============================= NORSK (BOKMÅL) ============================= -->
+  <section class="lang active" id="nb" lang="nb">
+    <h1>Personvernerklæring for Streif</h1>
+    <p class="meta">Versjon 1.0 — sist oppdatert 20. juli 2026</p>
+
+    <div class="lede">
+      <p><strong>Kort fortalt:</strong> Streif lagrer turene dine <strong>på telefonen din</strong>. Det finnes ingen
+      brukerkonto, ingen innlogging og ingen server som mottar bevegelsene dine. GPS-sporet ditt forlater
+      aldri enheten. Appen har ingen annonser, ingen analyseverktøy og ingen sporings-SDK-er.</p>
+      <p>Det eneste som går ut på nettet, er forespørsler om <em>kartdata</em> — og de avslører omtrent
+      hvor i landet du ser på kartet, på samme måte som enhver annen kartapp.</p>
+    </div>
+
+    <h2>1. Hvem er behandlingsansvarlig</h2>
+    <p>Streif utvikles og drives av:</p>
+    <p>
+      Denis Semenyuk (enkeltpersonforetak)<br>
+      Ørsta, Norge<br>
+      Org.nr.: <em>[fylles inn]</em><br>
+      E-post: <a href="mailto:contact@semden.info">contact@semden.info</a>
+    </p>
+
+    <h2>2. Hva appen gjør med posisjonen din</h2>
+    <p>Streif er en app som «låser opp» kartet mens du går: bygninger du passerer på en ekte tur, får farge.
+    For å få til dette må appen vite hvor du er.</p>
+    <ul>
+      <li><strong>Posisjon brukes kun mens du selv har startet en tur.</strong> Du trykker «Start walk», og
+      appen kjører en forgrunnstjeneste (foreground service) med en <strong>synlig varsling</strong> så lenge
+      turen pågår. Du ser alltid at registreringen er i gang.</li>
+      <li><strong>Appen bruker ikke bakgrunnsposisjon.</strong> Vi ber aldri om tillatelsen
+      <code>ACCESS_BACKGROUND_LOCATION</code>. Streif kan ikke registrere posisjonen din når du ikke selv
+      har startet en tur.</li>
+      <li><strong>Sporet ditt sendes aldri noe sted.</strong> Posisjonene behandles i minnet på telefonen,
+      sammenlignes med bygningsomrissene i nærheten, og forkastes. Det som blir liggende igjen, er
+      <em>resultatet</em>: «denne bygningen er avdekket», ikke veien du gikk.</li>
+      <li>Sporingen fortsetter med skjermen av eller telefonen i lomma — det er hele poenget med en tur —
+      men bare så lenge forgrunnstjenesten kjører.</li>
+    </ul>
+
+    <h2>3. Hva som lagres på telefonen din</h2>
+    <p>Alt dette ligger i appens private lagringsområde (en lokal database, <code>streif.db</code>) og er
+    ikke tilgjengelig for andre apper:</p>
+    <table>
+      <tr><th>Data</th><th>Hva det er</th></tr>
+      <tr><td>Avdekkede bygninger</td><td>ID, bygningstype, tidspunkt for første gang du så den, og hvilket tettsted/kommune den ligger i</td></tr>
+      <tr><td>Besøkte steder (POI)</td><td>ID og type for turmål som topper, badeplasser og gapahuker du har vært innom</td></tr>
+      <tr><td>Turøkter</td><td>Start- og sluttidspunkt, tilbakelagt distanse, antall nye funn</td></tr>
+      <tr><td>Innstillinger</td><td>Valgt kartstil og lignende preferanser</td></tr>
+    </table>
+    <p>Ingen av disse dataene sendes til oss eller til noen andre. De blir liggende til du selv sletter dem
+    (se punkt 7).</p>
+
+    <h2>4. Hva som går ut på nettet</h2>
+    <p>Streif trenger nett for å hente kart og kartdata. Følgende forespørsler går ut fra appen — alle over
+    kryptert forbindelse (HTTPS):</p>
+    <table>
+      <tr><th>Mottaker</th><th>Hva som sendes</th><th>Hvorfor</th></tr>
+      <tr>
+        <td><strong>Kartverket</strong><br><code>cache.kartverket.no</code></td>
+        <td>IP-adresse og hvilken kartrute (tile) som vises — altså omtrent hvor på kartet du ser</td>
+        <td>Bakgrunnskartet</td>
+      </tr>
+      <tr>
+        <td><strong>Cloudflare R2</strong><br>(vår egen datalagring)</td>
+        <td>IP-adresse og et grovt rutenett-felt på ca. 0,02° (rundt 2 km) rundt der du er</td>
+        <td>Bygningsomriss, tettstedsgrenser og turmål for området du beveger deg i</td>
+      </tr>
+      <tr>
+        <td><strong>Wikimedia Commons</strong></td>
+        <td>IP-adresse og hvilket bilde som hentes — altså hvilket turmål du har åpnet kortet til</td>
+        <td>Illustrasjonsbilde på stedskortet</td>
+      </tr>
+    </table>
+    <p><strong>Merk forskjellen:</strong> disse forespørslene røper <em>omtrentlig område</em>, fordi et kart
+    må vite hvilket område det skal tegne. De inneholder ikke GPS-sporet ditt, ikke turhistorikken din, og
+    ingenting som identifiserer deg som person. Vi lagrer ingen slike forespørsler koblet til deg.</p>
+    <p>Kartverket og Wikimedia Commons er selvstendige aktører med egne personvernerklæringer.
+    Cloudflare fungerer som databehandler for oss (ren fillagring).</p>
+
+    <h2>5. Tillatelser appen ber om</h2>
+    <ul>
+      <li><strong>Posisjon (presis)</strong> — nødvendig. Uten meternøyaktighet klarer ikke appen å avgjøre
+      hvilken bygning du faktisk gikk forbi.</li>
+      <li><strong>Varsler</strong> — for den synlige varslingen som må vises mens en tur registreres.</li>
+      <li><strong>Fysisk aktivitet</strong> — brukes <em>kun på telefonen</em> til å kjenne igjen at du sitter i
+      bil eller på sykkel, slik at appen ikke låser opp en hel bydel i forbifarten. Aktivitetsdata sendes
+      ingen steder.</li>
+      <li><strong>Internett</strong> — for kartdataene beskrevet i punkt 4.</li>
+    </ul>
+
+    <h2>6. Hva Streif <em>ikke</em> gjør</h2>
+    <ul>
+      <li>Ingen brukerkonto, ingen innlogging, ingen e-postadresse samles inn.</li>
+      <li>Ingen annonser og ingen annonse-ID.</li>
+      <li>Ingen analyse-, statistikk- eller krasjrapporteringsverktøy (ingen Firebase, ingen Crashlytics,
+      ingen tredjeparts-SDK-er for sporing).</li>
+      <li>Ingen deling av posisjon i sanntid med andre brukere.</li>
+      <li>Ingen salg eller utlevering av personopplysninger til noen.</li>
+      <li>Ingen profilering og ingen automatiserte avgjørelser.</li>
+    </ul>
+
+    <h2>7. Sletting og dine data</h2>
+    <p>Siden alt ligger lokalt, kontrollerer du dataene direkte:</p>
+    <ul>
+      <li><strong>Slette alt:</strong> Innstillinger → Apper → Streif → Lagring → «Tøm lagring», eller
+      avinstaller appen. Da forsvinner databasen med alle avdekkede bygninger og turøkter permanent.</li>
+      <li>Appen har foreløpig ingen egen «slett alt»-knapp inne i appen. Den kommer i en senere versjon.</li>
+      <li>Vi kan ikke slette dataene dine for deg — vi har dem ikke.</li>
+    </ul>
+
+    <h2>8. Rettighetene dine etter GDPR</h2>
+    <p>Du har rett til innsyn, retting, sletting, dataportabilitet og til å protestere mot behandling.
+    I praksis er disse rettighetene allerede oppfylt ved at behandlingen skjer lokalt: du har full og direkte
+    tilgang til alt appen vet om deg, og kan slette det når som helst.</p>
+    <p>Behandlingsgrunnlaget for posisjonsbruken er ditt <strong>samtykke</strong> (GDPR art. 6 nr. 1 bokstav a),
+    gitt ved at du innvilger posisjonstillatelsen og starter en tur. Du kan når som helst trekke samtykket
+    tilbake ved å avslå tillatelsen i systeminnstillingene.</p>
+    <p>Har du spørsmål, kontakt <a href="mailto:contact@semden.info">contact@semden.info</a>.
+    Du har også rett til å klage til <a href="https://www.datatilsynet.no/">Datatilsynet</a>.</p>
+
+    <h2>9. Barn</h2>
+    <p>Streif er ikke rettet mot barn og samler ikke bevisst inn opplysninger om barn. Appen har ingen
+    konto, ingen sosiale funksjoner og ingen kommunikasjon mellom brukere.</p>
+
+    <h2>10. Planlagte funksjoner</h2>
+    <p>Vi jobber med en valgfri sikkerhetskopiering av framgangen din:
+    <strong>innlogging med Google og lagring i Google Drive App Folder</strong>. Dersom dette kommer, vil det
+    gjelde at funksjonen er <em>frivillig og avslått som standard</em>, at sikkerhetskopien lagres i
+    <em>din egen</em> Google-konto (vi verken hoster eller leser den), at vi kun mottar det som trengs for
+    å identifisere kontoen mot Drive, og at fortsatt <em>ingen</em> GPS-spor lagres. Denne erklæringen blir
+    oppdatert før funksjonen slås på, og du vil bli spurt om samtykke i appen.</p>
+
+    <h2>11. Endringer</h2>
+    <p>Ved vesentlige endringer oppdaterer vi datoen øverst og beskriver endringen i appen eller i
+    Play-oppføringen. Denne siden er alltid gjeldende versjon.</p>
+
+    <h2>12. Kartdata og lisenser</h2>
+    <p>Kartgrunnlag © Kartverket (CC BY 4.0). Bygningsdata fra OpenStreetMap (ODbL) og
+    Matrikkelen (CC BY 4.0). Tettstedsgrenser fra SSB (NLOD). Friluftsdata fra Naturbase (NLOD).
+    Bilder fra Wikimedia Commons med egne lisenser, kreditert på det enkelte stedskortet.</p>
+  </section>
+
+  <!-- ================================ ENGLISH ================================ -->
+  <section class="lang" id="en" lang="en">
+    <h1>Privacy Policy for Streif</h1>
+    <p class="meta">Version 1.0 — last updated 20 July 2026</p>
+
+    <div class="lede">
+      <p><strong>In short:</strong> Streif keeps your walks <strong>on your phone</strong>. There is no user
+      account, no login, and no server that receives your movements. Your GPS track never leaves the device.
+      The app contains no ads, no analytics, and no tracking SDKs.</p>
+      <p>The only thing that goes out over the network is requests for <em>map data</em> — and those reveal
+      roughly which area of the map you are looking at, the same way any other map app does.</p>
+    </div>
+
+    <h2>1. Who is the data controller</h2>
+    <p>Streif is developed and operated by:</p>
+    <p>
+      Denis Semenyuk (sole proprietorship / enkeltpersonforetak)<br>
+      Ørsta, Norway<br>
+      Org. no.: <em>[to be filled in]</em><br>
+      E-mail: <a href="mailto:contact@semden.info">contact@semden.info</a>
+    </p>
+
+    <h2>2. What the app does with your location</h2>
+    <p>Streif is an app that "uncovers" the map as you walk: buildings you pass on a real walk take on colour.
+    To do that, the app needs to know where you are.</p>
+    <ul>
+      <li><strong>Location is used only while you have started a walk yourself.</strong> You tap "Start walk",
+      and the app runs a foreground service with a <strong>visible notification</strong> for as long as the
+      walk lasts. You can always see that recording is in progress.</li>
+      <li><strong>The app does not use background location.</strong> We never request the
+      <code>ACCESS_BACKGROUND_LOCATION</code> permission. Streif cannot record your position when you have
+      not started a walk yourself.</li>
+      <li><strong>Your track is never sent anywhere.</strong> Location fixes are processed in memory on the
+      phone, compared against nearby building outlines, and discarded. What remains is the
+      <em>result</em>: "this building has been uncovered" — not the path you walked.</li>
+      <li>Tracking continues with the screen off or the phone in your pocket — that is the whole point of a
+      walk — but only for as long as the foreground service is running.</li>
+    </ul>
+
+    <h2>3. What is stored on your phone</h2>
+    <p>All of the following lives in the app's private storage (a local database, <code>streif.db</code>) and
+    is not accessible to other apps:</p>
+    <table>
+      <tr><th>Data</th><th>What it is</th></tr>
+      <tr><td>Uncovered buildings</td><td>ID, building type, the time you first saw it, and which urban settlement/municipality it is in</td></tr>
+      <tr><td>Visited places (POI)</td><td>ID and type of destinations such as peaks, swimming spots and shelters you have reached</td></tr>
+      <tr><td>Walk sessions</td><td>Start and end time, distance covered, number of new finds</td></tr>
+      <tr><td>Settings</td><td>Chosen map style and similar preferences</td></tr>
+    </table>
+    <p>None of this data is sent to us or to anyone else. It stays until you delete it yourself (see section 7).</p>
+
+    <h2>4. What goes out over the network</h2>
+    <p>Streif needs a network connection to fetch maps and map data. The following requests leave the app —
+    all over an encrypted connection (HTTPS):</p>
+    <table>
+      <tr><th>Recipient</th><th>What is sent</th><th>Why</th></tr>
+      <tr>
+        <td><strong>Kartverket</strong> (Norwegian Mapping Authority)<br><code>cache.kartverket.no</code></td>
+        <td>IP address and which map tile is being displayed — that is, roughly where on the map you are looking</td>
+        <td>The background map</td>
+      </tr>
+      <tr>
+        <td><strong>Cloudflare R2</strong><br>(our own file storage)</td>
+        <td>IP address and a coarse grid cell of about 0.02° (roughly 2 km) around where you are</td>
+        <td>Building outlines, settlement boundaries and destinations for the area you are moving through</td>
+      </tr>
+      <tr>
+        <td><strong>Wikimedia Commons</strong></td>
+        <td>IP address and which image is fetched — that is, which destination card you opened</td>
+        <td>Illustrative photo on the place card</td>
+      </tr>
+    </table>
+    <p><strong>Note the distinction:</strong> these requests reveal an <em>approximate area</em>, because a map
+    has to know which area to draw. They do not contain your GPS track, your walk history, or anything that
+    identifies you as a person. We do not store any such requests linked to you.</p>
+    <p>Kartverket and Wikimedia Commons are independent parties with their own privacy policies.
+    Cloudflare acts as a data processor for us (plain file storage).</p>
+
+    <h2>5. Permissions the app requests</h2>
+    <ul>
+      <li><strong>Location (precise)</strong> — required. Without metre-level accuracy the app cannot tell
+      which building you actually walked past.</li>
+      <li><strong>Notifications</strong> — for the visible notification that must be shown while a walk is
+      being recorded.</li>
+      <li><strong>Physical activity</strong> — used <em>on the phone only</em>, to recognise that you are in a
+      car or on a bike, so the app does not unlock an entire neighbourhood in passing. Activity data is not
+      sent anywhere.</li>
+      <li><strong>Internet</strong> — for the map data described in section 4.</li>
+    </ul>
+
+    <h2>6. What Streif does <em>not</em> do</h2>
+    <ul>
+      <li>No user account, no login, no e-mail address collected.</li>
+      <li>No ads and no advertising ID.</li>
+      <li>No analytics, telemetry or crash-reporting tools (no Firebase, no Crashlytics, no third-party
+      tracking SDKs).</li>
+      <li>No real-time location sharing with other users.</li>
+      <li>No sale or disclosure of personal data to anyone.</li>
+      <li>No profiling and no automated decision-making.</li>
+    </ul>
+
+    <h2>7. Deletion and your data</h2>
+    <p>Since everything is local, you control the data directly:</p>
+    <ul>
+      <li><strong>Delete everything:</strong> Settings → Apps → Streif → Storage → "Clear storage", or
+      uninstall the app. The database with all uncovered buildings and walk sessions is then permanently gone.</li>
+      <li>The app does not yet have its own in-app "delete everything" button. It is planned for a later version.</li>
+      <li>We cannot delete your data for you — we do not have it.</li>
+    </ul>
+
+    <h2>8. Your rights under the GDPR</h2>
+    <p>You have the right of access, rectification, erasure, data portability, and to object to processing.
+    In practice these rights are already satisfied by the processing being local: you have full and direct
+    access to everything the app knows about you, and can delete it at any time.</p>
+    <p>The legal basis for the use of location is your <strong>consent</strong> (GDPR Art. 6(1)(a)), given by
+    granting the location permission and starting a walk. You may withdraw consent at any time by revoking
+    the permission in system settings.</p>
+    <p>If you have questions, contact <a href="mailto:contact@semden.info">contact@semden.info</a>.
+    You also have the right to lodge a complaint with the Norwegian Data Protection Authority,
+    <a href="https://www.datatilsynet.no/">Datatilsynet</a>.</p>
+
+    <h2>9. Children</h2>
+    <p>Streif is not directed at children and does not knowingly collect information about children. The app
+    has no account, no social features and no communication between users.</p>
+
+    <h2>10. Planned features</h2>
+    <p>We are working on an optional backup of your progress:
+    <strong>Google Sign-In and storage in the Google Drive App Folder</strong>. If and when this ships, it will
+    be <em>optional and off by default</em>, the backup will be stored in <em>your own</em> Google account
+    (we neither host nor read it), we will receive only what is needed to identify the account against Drive,
+    and still <em>no</em> GPS tracks will be stored. This policy will be updated before the feature is enabled,
+    and you will be asked for consent in the app.</p>
+
+    <h2>11. Changes</h2>
+    <p>For material changes we update the date at the top and describe the change in the app or in the Play
+    listing. This page is always the current version.</p>
+
+    <h2>12. Map data and licences</h2>
+    <p>Base map © Kartverket (CC BY 4.0). Building data from OpenStreetMap (ODbL) and Matrikkelen (CC BY 4.0).
+    Settlement boundaries from Statistics Norway / SSB (NLOD). Outdoor recreation data from Naturbase (NLOD).
+    Photos from Wikimedia Commons under their own licences, credited on each place card.</p>
+  </section>
+
+  <footer>
+    <p>Streif · <a href="mailto:contact@semden.info">contact@semden.info</a></p>
+  </footer>
+</main>
+
+<script>
+(function(){
+  var buttons = document.querySelectorAll('.langbar button');
+  var sections = document.querySelectorAll('.lang');
+  function show(lang){
+    sections.forEach(function(s){ s.classList.toggle('active', s.id === lang); });
+    buttons.forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.lang === lang)); });
+    document.documentElement.lang = lang;
+    try { history.replaceState(null, '', '#' + lang); } catch(e){}
+  }
+  buttons.forEach(function(b){
+    b.addEventListener('click', function(){ show(b.dataset.lang); });
+  });
+  // Deep link (#en) wins; otherwise follow the browser language.
+  var hash = (location.hash || '').replace('#','');
+  if (hash === 'en' || hash === 'nb') show(hash);
+  else if (!/^nb|^no|^nn/i.test(navigator.language || '')) show('en');
+})();
+</script>
+</body>
+</html>
