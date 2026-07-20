@@ -1,0 +1,785 @@
+{
+ "_about": "bygningstype (Matrikkelen) -> норвезька назва. Ключ = той самий код, що лежить у властивості `bt` тайла area_*.geojson.",
+ "_sources": {
+  "ssb-klass-31": "https://data.ssb.no/api/klass/v1/classifications/31/codesAt?date=<date>",
+  "geonorge-sosi-kartdata": "https://register.geonorge.no/api/sosi-kodelister/kartdata/bygningstypekode.json"
+ },
+ "_generated": "2026-07-20",
+ "_note": "База — SSB KLASS #31 (126 кодів 3-го рівня). Доповнено з SOSI-кодлиста кодами, яких у KLASS немає: 956, 970, 999. Поле src у кожному рядку — звідки назва.",
+ "codes": {
+  "111": {
+   "name": "Enebolig",
+   "group": "Enebolig",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "112": {
+   "name": "Enebolig med hybelleilighet, sokkelleilighet o.l.",
+   "group": "Enebolig",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "113": {
+   "name": "Våningshus",
+   "group": "Enebolig",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "121": {
+   "name": "Tomannsbolig, vertikaldelt",
+   "group": "Tomannsbolig",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "122": {
+   "name": "Tomannsbolig, horisontaldelt",
+   "group": "Tomannsbolig",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "123": {
+   "name": "Våningshus, tomannsbolig, vertikaldelt",
+   "group": "Tomannsbolig",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "124": {
+   "name": "Våningshus, tomannsbolig, horisontaldelt",
+   "group": "Tomannsbolig",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "131": {
+   "name": "Rekkehus",
+   "group": "Rekkehus, kjedehus, andre småhus",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "133": {
+   "name": "Kjedehus inkl. atriumhus",
+   "group": "Rekkehus, kjedehus, andre småhus",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "135": {
+   "name": "Terrassehus",
+   "group": "Rekkehus, kjedehus, andre småhus",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "136": {
+   "name": "Andre småhus med 3 boliger eller flere",
+   "group": "Rekkehus, kjedehus, andre småhus",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "141": {
+   "name": "Store frittliggende boligbygg på 2 etasjer",
+   "group": "Store boligbygg",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "142": {
+   "name": "Store frittliggende boligbygg på 3 og 4 etasjer",
+   "group": "Store boligbygg",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "143": {
+   "name": "Store frittliggende boligbygg på 5 etasjer eller over",
+   "group": "Store boligbygg",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "144": {
+   "name": "Store sammenbygde boligbygg på 2 etasjer",
+   "group": "Store boligbygg",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "145": {
+   "name": "Store sammenbygde boligbygg på 3 og 4 etasjer",
+   "group": "Store boligbygg",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "146": {
+   "name": "Store sammenbygde boligbygg på 5 etasjer og over",
+   "group": "Store boligbygg",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "151": {
+   "name": "Bo- og servicesenter",
+   "group": "Bygning for bofellesskap",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "152": {
+   "name": "Studenthjem/studentboliger",
+   "group": "Bygning for bofellesskap",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "159": {
+   "name": "Annen bygning for bofellesskap",
+   "group": "Bygning for bofellesskap",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "161": {
+   "name": "Fritidsbygning (hytter, sommerhus o.l.)",
+   "group": "Fritidsbolig",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "162": {
+   "name": "Helårsbolig benyttet som fritidsbolig",
+   "group": "Fritidsbolig",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "163": {
+   "name": "Våningshus benyttet som fritidsbolig",
+   "group": "Fritidsbolig",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "171": {
+   "name": "Seterhus, sel, rorbu o.l.",
+   "group": "Koie, seterhus og lignende",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "172": {
+   "name": "Skogs- og utmarkskoie, gamme",
+   "group": "Koie, seterhus og lignende",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "181": {
+   "name": "Garasje, uthus, anneks knyttet til bolig",
+   "group": "Garasje og uthus til bolig",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "182": {
+   "name": "Garasje, uthus, anneks knyttet til fritidsbolig",
+   "group": "Garasje og uthus til bolig",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "183": {
+   "name": "Naust, båthus, sjøbu",
+   "group": "Garasje og uthus til bolig",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "193": {
+   "name": "Boligbrakker",
+   "group": "Annen boligbygning",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "199": {
+   "name": "Annen boligbygning (f.eks. sekundærbolig reindrift)",
+   "group": "Annen boligbygning",
+   "main": "Bolig",
+   "src": "ssb-klass-31"
+  },
+  "211": {
+   "name": "Fabrikkbygning",
+   "group": "Industribygning",
+   "main": "Industri og lagerbygning",
+   "src": "ssb-klass-31"
+  },
+  "212": {
+   "name": "Verkstedbygning",
+   "group": "Industribygning",
+   "main": "Industri og lagerbygning",
+   "src": "ssb-klass-31"
+  },
+  "214": {
+   "name": "Bygning for renseanlegg",
+   "group": "Industribygning",
+   "main": "Industri og lagerbygning",
+   "src": "ssb-klass-31"
+  },
+  "216": {
+   "name": "Bygning for vannforsyning, bl.a. pumpestasjon",
+   "group": "Industribygning",
+   "main": "Industri og lagerbygning",
+   "src": "ssb-klass-31"
+  },
+  "219": {
+   "name": "Annen industribygning",
+   "group": "Industribygning",
+   "main": "Industri og lagerbygning",
+   "src": "ssb-klass-31"
+  },
+  "221": {
+   "name": "Kraftstasjon (>15 000 kVA)",
+   "group": "Energiforsyningsbygning",
+   "main": "Industri og lagerbygning",
+   "src": "ssb-klass-31"
+  },
+  "223": {
+   "name": "Transformatorstasjon (>10 000 kVA)",
+   "group": "Energiforsyningsbygning",
+   "main": "Industri og lagerbygning",
+   "src": "ssb-klass-31"
+  },
+  "229": {
+   "name": "Annen energiforsyningsbygning",
+   "group": "Energiforsyningsbygning",
+   "main": "Industri og lagerbygning",
+   "src": "ssb-klass-31"
+  },
+  "231": {
+   "name": "Lagerhall",
+   "group": "Lagerbygning",
+   "main": "Industri og lagerbygning",
+   "src": "ssb-klass-31"
+  },
+  "232": {
+   "name": "Kjøle- og fryselager",
+   "group": "Lagerbygning",
+   "main": "Industri og lagerbygning",
+   "src": "ssb-klass-31"
+  },
+  "233": {
+   "name": "Silobygning",
+   "group": "Lagerbygning",
+   "main": "Industri og lagerbygning",
+   "src": "ssb-klass-31"
+  },
+  "239": {
+   "name": "Annen lagerbygning",
+   "group": "Lagerbygning",
+   "main": "Industri og lagerbygning",
+   "src": "ssb-klass-31"
+  },
+  "241": {
+   "name": "Hus for dyr, fôrlager, strølager, frukt- og grønnsakslager, landbrukssilo, høy-/korntørke",
+   "group": "Fiskeri- og landbruksbygning",
+   "main": "Industri og lagerbygning",
+   "src": "ssb-klass-31"
+  },
+  "243": {
+   "name": "Veksthus",
+   "group": "Fiskeri- og landbruksbygning",
+   "main": "Industri og lagerbygning",
+   "src": "ssb-klass-31"
+  },
+  "244": {
+   "name": "Driftsbygning for fiske og fangst, inkl. oppdrettsanlegg",
+   "group": "Fiskeri- og landbruksbygning",
+   "main": "Industri og lagerbygning",
+   "src": "ssb-klass-31"
+  },
+  "245": {
+   "name": "Naust/redskapshus for fiske",
+   "group": "Fiskeri- og landbruksbygning",
+   "main": "Industri og lagerbygning",
+   "src": "ssb-klass-31"
+  },
+  "248": {
+   "name": "Annen fiskeri- og fangstbygning",
+   "group": "Fiskeri- og landbruksbygning",
+   "main": "Industri og lagerbygning",
+   "src": "ssb-klass-31"
+  },
+  "249": {
+   "name": "Annen landbruksbygning",
+   "group": "Fiskeri- og landbruksbygning",
+   "main": "Industri og lagerbygning",
+   "src": "ssb-klass-31"
+  },
+  "311": {
+   "name": "Kontor- og administrasjonsbygning, rådhus",
+   "group": "Kontorbygning",
+   "main": "Kontor- og forretningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "312": {
+   "name": "Bankbygning, posthus",
+   "group": "Kontorbygning",
+   "main": "Kontor- og forretningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "313": {
+   "name": "Mediebygning",
+   "group": "Kontorbygning",
+   "main": "Kontor- og forretningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "319": {
+   "name": "Annen kontorbygning",
+   "group": "Kontorbygning",
+   "main": "Kontor- og forretningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "321": {
+   "name": "Kjøpesenter, varehus",
+   "group": "Forretningsbygning",
+   "main": "Kontor- og forretningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "322": {
+   "name": "Butikkbygning",
+   "group": "Forretningsbygning",
+   "main": "Kontor- og forretningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "323": {
+   "name": "Bensinstasjon",
+   "group": "Forretningsbygning",
+   "main": "Kontor- og forretningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "329": {
+   "name": "Annen forretningsbygning",
+   "group": "Forretningsbygning",
+   "main": "Kontor- og forretningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "330": {
+   "name": "Messe- og kongressbygning",
+   "group": "Forretningsbygning",
+   "main": "Kontor- og forretningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "411": {
+   "name": "Ekspedisjonsbygning, flyterminal, kontrolltårn",
+   "group": "Ekspedisjonsbygning, terminal",
+   "main": "Samferdsels- og kommunikasjonsbygning",
+   "src": "ssb-klass-31"
+  },
+  "412": {
+   "name": "Jernbane- og T-banestasjon",
+   "group": "Ekspedisjonsbygning, terminal",
+   "main": "Samferdsels- og kommunikasjonsbygning",
+   "src": "ssb-klass-31"
+  },
+  "415": {
+   "name": "Godsterminal",
+   "group": "Ekspedisjonsbygning, terminal",
+   "main": "Samferdsels- og kommunikasjonsbygning",
+   "src": "ssb-klass-31"
+  },
+  "416": {
+   "name": "Postterminal",
+   "group": "Ekspedisjonsbygning, terminal",
+   "main": "Samferdsels- og kommunikasjonsbygning",
+   "src": "ssb-klass-31"
+  },
+  "419": {
+   "name": "Annen ekspedisjons- og terminalbygning",
+   "group": "Ekspedisjonsbygning, terminal",
+   "main": "Samferdsels- og kommunikasjonsbygning",
+   "src": "ssb-klass-31"
+  },
+  "429": {
+   "name": "Telekommunikasjonsbygning",
+   "group": "Telekommunikasjonsbygning",
+   "main": "Samferdsels- og kommunikasjonsbygning",
+   "src": "ssb-klass-31"
+  },
+  "431": {
+   "name": "Parkeringshus",
+   "group": "Garasje- og hangarbygning",
+   "main": "Samferdsels- og kommunikasjonsbygning",
+   "src": "ssb-klass-31"
+  },
+  "439": {
+   "name": "Annen garasje- hangarbygning",
+   "group": "Garasje- og hangarbygning",
+   "main": "Samferdsels- og kommunikasjonsbygning",
+   "src": "ssb-klass-31"
+  },
+  "441": {
+   "name": "Trafikktilsynsbygning",
+   "group": "Veg- og trafikktilsynsbygning",
+   "main": "Samferdsels- og kommunikasjonsbygning",
+   "src": "ssb-klass-31"
+  },
+  "449": {
+   "name": "Annen veg- og trafikktilsynsbygning",
+   "group": "Veg- og trafikktilsynsbygning",
+   "main": "Samferdsels- og kommunikasjonsbygning",
+   "src": "ssb-klass-31"
+  },
+  "511": {
+   "name": "Hotellbygning",
+   "group": "Hotellbygning",
+   "main": "Hotell-  og restaurantbygning",
+   "src": "ssb-klass-31"
+  },
+  "512": {
+   "name": "Motellbygning",
+   "group": "Hotellbygning",
+   "main": "Hotell-  og restaurantbygning",
+   "src": "ssb-klass-31"
+  },
+  "519": {
+   "name": "Annen hotellbygning",
+   "group": "Hotellbygning",
+   "main": "Hotell-  og restaurantbygning",
+   "src": "ssb-klass-31"
+  },
+  "521": {
+   "name": "Hospits, pensjonat",
+   "group": "Bygning for overnatting",
+   "main": "Hotell-  og restaurantbygning",
+   "src": "ssb-klass-31"
+  },
+  "522": {
+   "name": "Vandrerhjem, feriehjem/-koloni, turisthytte",
+   "group": "Bygning for overnatting",
+   "main": "Hotell-  og restaurantbygning",
+   "src": "ssb-klass-31"
+  },
+  "523": {
+   "name": "Appartement",
+   "group": "Bygning for overnatting",
+   "main": "Hotell-  og restaurantbygning",
+   "src": "ssb-klass-31"
+  },
+  "524": {
+   "name": "Campinghytte/utleiehytte",
+   "group": "Bygning for overnatting",
+   "main": "Hotell-  og restaurantbygning",
+   "src": "ssb-klass-31"
+  },
+  "529": {
+   "name": "Annen bygning for overnatting",
+   "group": "Bygning for overnatting",
+   "main": "Hotell-  og restaurantbygning",
+   "src": "ssb-klass-31"
+  },
+  "531": {
+   "name": "Restaurantbygning, kafébygning",
+   "group": "Restaurantbygning",
+   "main": "Hotell-  og restaurantbygning",
+   "src": "ssb-klass-31"
+  },
+  "532": {
+   "name": "Sentralkjøkken, kantinebygning",
+   "group": "Restaurantbygning",
+   "main": "Hotell-  og restaurantbygning",
+   "src": "ssb-klass-31"
+  },
+  "533": {
+   "name": "Gatekjøkken, kioskbygning",
+   "group": "Restaurantbygning",
+   "main": "Hotell-  og restaurantbygning",
+   "src": "ssb-klass-31"
+  },
+  "539": {
+   "name": "Annen restaurantbygning",
+   "group": "Restaurantbygning",
+   "main": "Hotell-  og restaurantbygning",
+   "src": "ssb-klass-31"
+  },
+  "611": {
+   "name": "Lekepark",
+   "group": "Skolebygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "612": {
+   "name": "Barnehage",
+   "group": "Skolebygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "613": {
+   "name": "Barneskole",
+   "group": "Skolebygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "614": {
+   "name": "Ungdomsskole",
+   "group": "Skolebygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "615": {
+   "name": "Kombinert barne- og ungdomsskole",
+   "group": "Skolebygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "616": {
+   "name": "Videregående skole",
+   "group": "Skolebygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "619": {
+   "name": "Annen skolebygning",
+   "group": "Skolebygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "621": {
+   "name": "Universitets- og høgskolebygning med integrerte funksjoner, auditorium, lesesal o.a.",
+   "group": "Universitet- og høgskolebygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "623": {
+   "name": "Laboratoriebygning",
+   "group": "Universitet- og høgskolebygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "629": {
+   "name": "Annen universitets-, høgskole- og forskningsbygning",
+   "group": "Universitet- og høgskolebygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "641": {
+   "name": "Museum, kunstgalleri",
+   "group": "Museums- og biblioteksbygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "642": {
+   "name": "Bibliotek, mediatek",
+   "group": "Museums- og biblioteksbygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "643": {
+   "name": "Zoologisk og botanisk hage",
+   "group": "Museums- og biblioteksbygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "649": {
+   "name": "Annen museums- og bibliotekbygning",
+   "group": "Museums- og biblioteksbygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "651": {
+   "name": "Idrettshall",
+   "group": "Idrettsbygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "652": {
+   "name": "Ishall",
+   "group": "Idrettsbygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "653": {
+   "name": "Svømmehall",
+   "group": "Idrettsbygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "654": {
+   "name": "Tribune og idrettsgarderobe",
+   "group": "Idrettsbygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "655": {
+   "name": "Helsestudio",
+   "group": "Idrettsbygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "659": {
+   "name": "Annen idrettsbygning",
+   "group": "Idrettsbygning",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "661": {
+   "name": "Kinobygning, teaterbygning, opera/konserthus",
+   "group": "Kulturhus",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "662": {
+   "name": "Samfunnshus, grendehus",
+   "group": "Kulturhus",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "663": {
+   "name": "Diskotek",
+   "group": "Kulturhus",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "669": {
+   "name": "Annet kulturhus",
+   "group": "Kulturhus",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "671": {
+   "name": "Kirke, kapell",
+   "group": "Bygning for religiøse aktiviteter",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "672": {
+   "name": "Bedehus, menighetshus",
+   "group": "Bygning for religiøse aktiviteter",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "673": {
+   "name": "Krematorium, gravkapell, bårehus",
+   "group": "Bygning for religiøse aktiviteter",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "674": {
+   "name": "Synagoge, moské",
+   "group": "Bygning for religiøse aktiviteter",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "675": {
+   "name": "Kloster",
+   "group": "Bygning for religiøse aktiviteter",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "679": {
+   "name": "Annen bygning for religiøse aktiviteter",
+   "group": "Bygning for religiøse aktiviteter",
+   "main": "Kultur- og forskningsbygning",
+   "src": "ssb-klass-31"
+  },
+  "719": {
+   "name": "Sykehus",
+   "group": "Sykehus",
+   "main": "Helsebygning",
+   "src": "ssb-klass-31"
+  },
+  "721": {
+   "name": "Sykehjem",
+   "group": "Sykehjem",
+   "main": "Helsebygning",
+   "src": "ssb-klass-31"
+  },
+  "722": {
+   "name": "Bo- og behandlingssenter, aldershjem",
+   "group": "Sykehjem",
+   "main": "Helsebygning",
+   "src": "ssb-klass-31"
+  },
+  "723": {
+   "name": "Rehabiliteringsinstitusjon, kurbad",
+   "group": "Sykehjem",
+   "main": "Helsebygning",
+   "src": "ssb-klass-31"
+  },
+  "729": {
+   "name": "Annet sykehjem",
+   "group": "Sykehjem",
+   "main": "Helsebygning",
+   "src": "ssb-klass-31"
+  },
+  "731": {
+   "name": "Klinikk, legekontor/-senter/-vakt",
+   "group": "Primærhelsebygning",
+   "main": "Helsebygning",
+   "src": "ssb-klass-31"
+  },
+  "732": {
+   "name": "Helse- og sosialsenter, helsestasjon",
+   "group": "Primærhelsebygning",
+   "main": "Helsebygning",
+   "src": "ssb-klass-31"
+  },
+  "739": {
+   "name": "Annen primærhelsebygning",
+   "group": "Primærhelsebygning",
+   "main": "Helsebygning",
+   "src": "ssb-klass-31"
+  },
+  "819": {
+   "name": "Fengselsbygning",
+   "group": "Fengselsbygning",
+   "main": "Fengsel, beredskapsbygning mv.",
+   "src": "ssb-klass-31"
+  },
+  "821": {
+   "name": "Politistasjon",
+   "group": "Beredskapsbygning",
+   "main": "Fengsel, beredskapsbygning mv.",
+   "src": "ssb-klass-31"
+  },
+  "822": {
+   "name": "Brannstasjon, ambulansestasjon",
+   "group": "Beredskapsbygning",
+   "main": "Fengsel, beredskapsbygning mv.",
+   "src": "ssb-klass-31"
+  },
+  "823": {
+   "name": "Fyrstasjon, losstasjon",
+   "group": "Beredskapsbygning",
+   "main": "Fengsel, beredskapsbygning mv.",
+   "src": "ssb-klass-31"
+  },
+  "824": {
+   "name": "Stasjon for radarovervåkning av fly- og/eller skipstrafikk",
+   "group": "Beredskapsbygning",
+   "main": "Fengsel, beredskapsbygning mv.",
+   "src": "ssb-klass-31"
+  },
+  "825": {
+   "name": "Tilfluktsrom/bunker",
+   "group": "Beredskapsbygning",
+   "main": "Fengsel, beredskapsbygning mv.",
+   "src": "ssb-klass-31"
+  },
+  "829": {
+   "name": "Annen beredskapsbygning",
+   "group": "Beredskapsbygning",
+   "main": "Fengsel, beredskapsbygning mv.",
+   "src": "ssb-klass-31"
+  },
+  "830": {
+   "name": "Monument",
+   "group": "Monument",
+   "main": "Fengsel, beredskapsbygning mv.",
+   "src": "ssb-klass-31"
+  },
+  "840": {
+   "name": "Offentlig toalett",
+   "group": "Offentlig toalett",
+   "main": "Fengsel, beredskapsbygning mv.",
+   "src": "ssb-klass-31"
+  },
+  "956": {
+   "name": "Turisthytter",
+   "group": "",
+   "main": "",
+   "src": "geonorge-sosi-kartdata"
+  },
+  "970": {
+   "name": "Sykehus med akuttmottak",
+   "group": "",
+   "main": "",
+   "src": "geonorge-sosi-kartdata"
+  },
+  "999": {
+   "name": "Ukjent bygningstype",
+   "group": "",
+   "main": "",
+   "src": "geonorge-sosi-kartdata"
+  }
+ }
+}

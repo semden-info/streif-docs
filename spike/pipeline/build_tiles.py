@@ -595,8 +595,11 @@ def main():
             f"{c} {e['name']} {e['total']}/{e['accessible']}" for c, e in byKom.items())
             + f" | сума {kom_sum}/{tot_all}"
             + ("" if kom_sum == tot_all else f" ⚠ {tot_all - kom_sum} буд. без тега комуни"))
+    # ⚠️ БЕЗ indent: manifest читає лише машина, а відступи коштували 40% його розміру. З появою
+    # `byBygningstype` (27 комун × ~81 код) файл виріс 227→372 КБ; без відступів — 217 КБ, тобто
+    # МЕНШЕ, ніж до появи кодів. На нац.масштабі ця економія масштабується разом із файлом.
     json.dump(manifest, open(os.path.join(outdir, "manifest.json"), "w", encoding="utf-8"),
-              ensure_ascii=False, indent=1)
+              ensure_ascii=False, separators=(",", ":"))
     print(f"manifest: region='{region}' total={tot_all} accessible={acc_all} "
           f"byType={ {k: v['total'] for k, v in byType.items()} }")
     top_bt = sorted(byBt.items(), key=lambda kv: -kv[1]["total"])[:8]
