@@ -5,12 +5,31 @@ Streif CC-BY tile pipeline (Variant 1: OSM geometry [ODbL] + Matrikkelen type [C
 IN : Matrikkelen-Bygningspunkt GML (per kommune) + OSM buildings+highways JSON (per kommune)
 OUT: area_{la}_{lo}.geojson tiles (0.02deg grid, matches AreaCache.keyFor) with props
      building_id (m<bygningsnummer> | w<osmid>), type (Streif 6-cat), accessible (bool D6)
-     + manifest.json
+     + manifest.json (з dataVersion — версією СХЕМИ тайлів для кеш-інвалідації на клієнті)
 """
 import sys, os, re, json, math, datetime
 from array import array
 import xml.etree.ElementTree as ET
 from pyproj import Transformer
+
+# ---------- ВЕРСІЯ СХЕМИ ТАЙЛІВ (кеш-інвалідація на клієнті) ----------
+# Клієнт кешує зони НАЗАВЖДИ (D24 «раз стягнули — назавжди»), тож зміна СКЛАДУ властивостей у тайлі
+# лишалась би непоміченою: старий кеш мовчки віддавав би фічі без нового поля, і фіча просто не
+# працювала б (так `bt` був порожній, а Coverage по комуні — нуль). `dataVersion` у manifest.json —
+# єдиний сигнал «формат змінився, перезавантаж зони».
+#
+# ⚠️ Це НЕ `generated` (час збірки). Реген тих самих даних не має скидати кеш у всіх користувачів —
+# це зайвий трафік на рівному місці. Версія описує ФОРМАТ І СКЛАД ВЛАСТИВОСТЕЙ, а не свіжість.
+#
+# ПІДІЙМАТИ, коли: додано/перейменовано/прибрано властивість фічі · змінено семантику наявної
+# (інша шкала, інший id-простір `building_id`) · змінено сітку тайлів (`TILE`).
+# НЕ підіймати, коли: перезібрали ті самі дані · додали/прибрали комуни · змінились лише лічильники
+# в manifest · оновився Matrikkelen/OSM без зміни полів.
+#
+# Історія:
+#   1 — building_id, type, accessible (+ tettsted_id P20, kommune P30/P31)
+#   2 — + bt (сирий bygningstype, P28)
+DATA_VERSION = 2
 
 TILE = 0.02          # must match AreaCache.TILE
 BUFFER = 28.0        # D6 accessible buffer (m), must match AreaSource.BUFFER
@@ -529,6 +548,8 @@ def main():
 
     kv = "Matrikkelen" + (" + NVDB Vegnett Pluss/Elveg 2.0" if elveg_paths else "")
     manifest = {"tiles": [], "tileDeg": TILE,
+                # Версія СХЕМИ тайлів (не свіжості) — клієнт по ній інвалідує кеш зон. Див. DATA_VERSION.
+                "dataVersion": DATA_VERSION,
                 "attribution": f"© OpenStreetMap contributors (ODbL) · © Kartverket ({kv}, CC BY 4.0)"}
     for (la, lo), feats in sorted(tiles.items()):
         key = f"area_{la}_{lo}"
@@ -600,7 +621,7 @@ def main():
     # МЕНШЕ, ніж до появи кодів. На нац.масштабі ця економія масштабується разом із файлом.
     json.dump(manifest, open(os.path.join(outdir, "manifest.json"), "w", encoding="utf-8"),
               ensure_ascii=False, separators=(",", ":"))
-    print(f"manifest: region='{region}' total={tot_all} accessible={acc_all} "
+    print(f"manifest: region='{region}' dataVersion={DATA_VERSION} total={tot_all} accessible={acc_all} "
           f"byType={ {k: v['total'] for k, v in byType.items()} }")
     top_bt = sorted(byBt.items(), key=lambda kv: -kv[1]["total"])[:8]
     print(f"byBygningstype: {len(byBt)} кодів у даних, топ "
