@@ -66,7 +66,7 @@
   <!-- ============================= NORSK (BOKMÅL) ============================= -->
   <section class="lang active" id="nb" lang="nb">
     <h1>Personvernerklæring for Streif</h1>
-    <p class="meta">Versjon 1.1 — sist oppdatert 20. juli 2026</p>
+    <p class="meta">Versjon 1.2 — sist oppdatert 21. juli 2026</p>
 
     <div class="lede">
       <p><strong>Kort fortalt:</strong> Streif lagrer turene dine <strong>på telefonen din</strong>. Det kreves ingen
@@ -90,12 +90,13 @@
     <p>Streif er en app som «låser opp» kartet mens du går: bygninger du passerer på en ekte tur, får farge.
     For å få til dette må appen vite hvor du er.</p>
     <ul>
-      <li><strong>Posisjon brukes kun mens du selv har startet en tur.</strong> Du trykker «Start walk», og
-      appen kjører en forgrunnstjeneste (foreground service) med en <strong>synlig varsling</strong> så lenge
-      turen pågår. Du ser alltid at registreringen er i gang.</li>
+      <li><strong>Posisjonen leses mens appen er åpen, og under en tur.</strong> Når du åpner Streif, henter
+      appen posisjonen din for å sentrere kartet og laste ned kartdataene for området du er i. Under en tur
+      kjører appen i tillegg en forgrunnstjeneste (foreground service) med en <strong>synlig varsling</strong>
+      så lenge turen pågår, slik at du alltid ser at registreringen er i gang.</li>
       <li><strong>Appen bruker ikke bakgrunnsposisjon.</strong> Vi ber aldri om tillatelsen
-      <code>ACCESS_BACKGROUND_LOCATION</code>. Streif kan ikke registrere posisjonen din når du ikke selv
-      har startet en tur.</li>
+      <code>ACCESS_BACKGROUND_LOCATION</code>. Når appen er lukket og ingen tur er i gang, kan Streif ikke
+      spørre hvor du er.</li>
       <li><strong>Sporet ditt sendes aldri noe sted.</strong> Posisjonene behandles i minnet på telefonen,
       sammenlignes med bygningsomrissene i nærheten, og forkastes. Det som blir liggende igjen, er
       <em>resultatet</em>: «denne bygningen er avdekket», ikke veien du gikk.</li>
@@ -112,6 +113,7 @@
       <tr><td>Besøkte steder (POI)</td><td>ID og type for turmål som topper, badeplasser og gapahuker du har vært innom</td></tr>
       <tr><td>Turøkter</td><td>Start- og sluttidspunkt, tilbakelagt distanse, antall nye funn</td></tr>
       <tr><td>Innstillinger</td><td>Valgt kartstil og lignende preferanser</td></tr>
+      <tr><td>Nedlastede kartdata</td><td>Kartfliser og bygningsdata for områdene du har åpnet kartet i, lagret slik at appen fungerer uten nett. Filnavnene inneholder koordinatene til området, så lista viser indirekte hvilke områder du har brukt kartet i</td></tr>
     </table>
     <p>Ingen av disse dataene sendes til oss eller til noen andre. De blir liggende til du selv sletter dem
     (se punkt 7).</p>
@@ -171,7 +173,10 @@
     <ul>
       <li><strong>Slette alt:</strong> Innstillinger → Apper → Streif → Lagring → «Tøm lagring», eller
       avinstaller appen. Da forsvinner databasen med alle avdekkede bygninger og turøkter permanent.</li>
-      <li>Appen har foreløpig ingen egen «slett alt»-knapp inne i appen. Den kommer i en senere versjon.</li>
+      <li>Appen har ingen egen «slett alt»-knapp inne i appen — det er et bevisst valg. Avinstallering
+      sletter alt appen har lagret, og operativsystemet gjør det fullstendig: Streif slår av Androids egen
+      skysikkerhetskopiering (<code>allowBackup="false"</code>), så ingenting kommer tilbake om du
+      installerer appen på nytt.</li>
       <li><strong>Sikkerhetskopi:</strong> har du slått på sikkerhetskopiering (punkt 10), kan du slå den av
       i Innstillinger for å stoppe skriving til Google Disk. Kopien ligger i din egen Google-konto, så du
       kontrollerer den selv.</li>
@@ -228,7 +233,7 @@
   <!-- ================================ ENGLISH ================================ -->
   <section class="lang" id="en" lang="en">
     <h1>Privacy Policy for Streif</h1>
-    <p class="meta">Version 1.1 — last updated 20 July 2026</p>
+    <p class="meta">Version 1.2 — last updated 21 July 2026</p>
 
     <div class="lede">
       <p><strong>In short:</strong> Streif keeps your walks <strong>on your phone</strong>. No account is
@@ -252,12 +257,14 @@
     <p>Streif is an app that "uncovers" the map as you walk: buildings you pass on a real walk take on colour.
     To do that, the app needs to know where you are.</p>
     <ul>
-      <li><strong>Location is used only while you have started a walk yourself.</strong> You tap "Start walk",
-      and the app runs a foreground service with a <strong>visible notification</strong> for as long as the
-      walk lasts. You can always see that recording is in progress.</li>
+      <li><strong>Your location is read while the app is open, and during a walk.</strong> When you open
+      Streif, the app reads your position to centre the map and to download the map data for the area you
+      are in. During a walk it additionally runs a foreground service with a <strong>visible
+      notification</strong> for as long as the walk lasts, so you can always see that recording is in
+      progress.</li>
       <li><strong>The app does not use background location.</strong> We never request the
-      <code>ACCESS_BACKGROUND_LOCATION</code> permission. Streif cannot record your position when you have
-      not started a walk yourself.</li>
+      <code>ACCESS_BACKGROUND_LOCATION</code> permission. When the app is closed and no walk is running,
+      Streif cannot ask where you are.</li>
       <li><strong>Your track is never sent anywhere.</strong> Location fixes are processed in memory on the
       phone, compared against nearby building outlines, and discarded. What remains is the
       <em>result</em>: "this building has been uncovered" — not the path you walked.</li>
@@ -274,6 +281,7 @@
       <tr><td>Visited places (POI)</td><td>ID and type of destinations such as peaks, swimming spots and shelters you have reached</td></tr>
       <tr><td>Walk sessions</td><td>Start and end time, distance covered, number of new finds</td></tr>
       <tr><td>Settings</td><td>Chosen map style and similar preferences</td></tr>
+      <tr><td>Downloaded map data</td><td>Map tiles and building data for the areas where you have opened the map, cached so the app works offline. The file names contain the coordinates of the area, so the list indirectly shows which areas you have used the map in</td></tr>
     </table>
     <p>None of this data is sent to us or to anyone else. It stays until you delete it yourself (see section 7).</p>
 
@@ -333,7 +341,10 @@
     <ul>
       <li><strong>Delete everything:</strong> Settings → Apps → Streif → Storage → "Clear storage", or
       uninstall the app. The database with all uncovered buildings and walk sessions is then permanently gone.</li>
-      <li>The app does not yet have its own in-app "delete everything" button. It is planned for a later version.</li>
+      <li>The app has no in-app "delete everything" button — that is a deliberate choice. Uninstalling
+      deletes everything the app has stored, and the operating system does it completely: Streif turns off
+      Android's own cloud backup (<code>allowBackup="false"</code>), so nothing comes back if you install
+      the app again.</li>
       <li><strong>Backup:</strong> if you turned on backup (section 10), turn it off in Settings to stop
       writing to Google Drive. The copy lives in your own Google account, so you stay in control of it.</li>
       <li>We cannot delete your data for you — we do not have it.</li>
