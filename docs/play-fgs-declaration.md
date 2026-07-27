@@ -37,6 +37,21 @@ buildings and outdoor destinations they pass so the map can be progressively unc
 
 ### 2.1 Description of the functionality
 
+> ⚠️ **Переписано 2026-07-27 (§B.6, розсинхрон документів).** Попередня редакція містила **три
+> неправдиві твердження** — і два з них були рівно ті, які рецензент уже ловив у політиці приватності
+> як BLOCKER:
+> 1. *«It cannot access location unless the user has started a walk»* — **неправда**: застосунок читає
+>    позицію на **кожному запуску** (`MapController.onMapReady` → `centerOnLastLocation`, `preloadArea`).
+>    Саме це формулювання виправляли в політиці §2 і в disclosure — а тут воно лишалось;
+> 2. *«Raw location data … never transmitted anywhere»* — трек справді не передається (D14), але
+>    **координати покидають пристрій як ключі тайлів** (Kartverket, Cloudflare R2). Так і декларує
+>    `play-data-safety.md` §2.1–2.2, тож заперечувати це в сусідньому документі не можна;
+> 3. *«There is no account, no server sync, and no analytics»* — акаунт і синк **є** з 2026-07-21
+>    (D36, Google Drive appdata), а телеметрія закритого тесту буде (D39).
+>
+> Рецензент Play кладе ці документи поруч. Розбіжність у декларації локації — типова причина
+> відхилення, і саме на ній нас уже ловили.
+
 ```
 Streif is a walking app that gradually uncovers a map of the user's own neighbourhood. When the
 user taps "Start walk", the app starts a foreground service of type "location" and matches each
@@ -47,13 +62,26 @@ personal map.
 The foreground service is started only by an explicit user action (the "Start walk" button) and
 stops when the user taps "Stop walk" or the Stop action in the notification. A persistent, visible
 notification ("Streif — walk / Uncovering buildings on your path") is shown for the entire duration
-of the walk, so the user always knows that location is being used.
+of the walk, so the user always knows that location is being used. The service is the only way the
+app receives location while the screen is off.
 
-The app does NOT request or use ACCESS_BACKGROUND_LOCATION. It cannot access location unless the
-user has started a walk in the app. Raw location data is processed in memory on the device and is
-never transmitted anywhere; only the resulting list of uncovered building IDs is stored, locally,
-in the app's own database. There is no account, no server sync, and no analytics.
+The app does NOT request or use ACCESS_BACKGROUND_LOCATION. Outside a walk, the app reads location
+only while it is open in the foreground: once to centre the map on the user, and to download the
+map data for the area they are in. When no walk is running and the app is closed, it does not
+receive location at all.
+
+The user's route is never stored and never sent: location updates are processed in memory and only
+the resulting list of uncovered building IDs is written to the app's local database. Map requests
+to Kartverket and to our own Cloudflare storage do carry the coordinates of the tiles being
+requested, as in any map application. The app offers an optional backup to the user's own Google
+Drive, which the user turns on themselves; it copies the aggregated progress only — never the
+route. During the closed test the app also sends anonymous aggregated diagnostics (matching
+accuracy, battery and data-loading statistics), which the user is told about on first run and can
+switch off in Settings at any time.
 ```
+
+⚠️ **Останнє речення прибрати, коли телеметрію закритого тесту буде знято** (D39 передбачає її
+видалення після тесту) — інакше документ знову почне описувати те, чого нема.
 
 ### 2.2 Why a foreground service is required (наслідки переривання)
 
