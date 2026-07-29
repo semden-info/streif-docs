@@ -20,6 +20,7 @@
 | App name | 30 символів | 6 (`Streif`) |
 | Short description | 80 символів | en **71** · nb **61** |
 | Full description | 4000 символів | en **1998** · nb **1904** |
+| Release notes | 500 символів **на мову** | en **457** · nb **463** (перша версія була 535 — не вміщалась) |
 
 *(Числа зміряні, не на око — якщо правитимеш тексти, переміряй: Play ріже мовчки.)*
 
@@ -125,6 +126,50 @@ Streif er et ikke-kommersielt, allmennyttig prosjekt laget i Ørsta/Volda. Det e
 | Іконка 512×512 | ✅ `docs/store-assets/play-icon-512.png` |
 | Скріншоти (мін. 2, треба 4-6) | ⏳ **знімати у Volda** — там мапа кольорова й плашка узгоджена. З Ulsteinvik кадр вийде безглуздий: «0,0% av Ulsteinvik» над зафарбованою Volda |
 | Feature graphic 1024×500 | 🟡 **чернетка є**: `play-feature-1024x500-en.png` / `-nb.png`. RGB без альфи (вимога Play). Права частина — **справжній** знімок зафарбованої Volda, не колаж: графіка показує механіку такою, якою вона є. Кегль підбирається автоматично під ширину колонки — норвезький рядок довший за англійський і при фіксованому кеглі наліз би на мапу саме в тій локалі, яку побачить більшість тестерів |
+
+---
+
+## Release notes для першого релізу (ліміт 500 символів на мову)
+
+> Для закритого тесту це **перше, що читає тестер**, тож три речі мусять бути тут, а не «десь у
+> політиці»: (1) де взагалі є дані — інакше людина поза Møre og Romsdal вирішить, що застосунок
+> зламаний; (2) що йде анонімна статистика — раніше, ніж вона побачить екран згоди; (3) що саме
+> просимо повідомляти, бо інакше зворотний зв'язок буде «прикольно» замість корисного.
+>
+> ⚠️ **Покриття звірено з `manifest.json` на R2, не з пам'яті** (2026-07-29): `region` = **Møre og
+> Romsdal**, **27 комун**, 236 456 будинків / 204 319 доступних. Стара нотатка «засіяно лише
+> Volda/Ørsta» була застарілою — сьогодні застосунок польово тягнув зони під Ulsteinvik (Ulstein,
+> 1516), і вони прийшли з даними.
+
+### English
+
+```
+First closed test build.
+
+Walk past a building and it lights up in colour by type. Also: nature POIs, a progress screen, optional Google Drive backup, four map styles.
+
+Building data covers Møre og Romsdal. Outside the county the map stays grey — missing data, not a bug.
+
+The app sends anonymous statistics during the test. You can switch it off in Settings.
+
+Please report anything odd — especially a building that lights up when you did not walk past it.
+```
+
+### Norsk (no-NO, bokmål)
+
+```
+Første versjon i lukket test.
+
+Gå forbi en bygning, og den lyser opp i farge etter type. Dessuten: turmål i naturen, framgangsskjerm, valgfri sikkerhetskopi til Google Disk og fire kartstiler.
+
+Bygningsdata dekker Møre og Romsdal. Utenfor fylket forblir kartet grått — manglende data, ikke en feil.
+
+Appen sender anonym statistikk under testen. Du kan slå det av i Innstillinger.
+
+Si fra om noe er rart — særlig en bygning som lyser opp uten at du gikk forbi den.
+```
+
+---
 
 ### Про відео для FGS-декларації
 
