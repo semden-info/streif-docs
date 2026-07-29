@@ -67,8 +67,12 @@ curl -X POST -d '{"install":"test"}' https://streif-telemetry.ВСТАВ-СВО�
 ## 3. Зняти дані з R2
 
 ```bash
-wrangler r2 object get streif-tiles --prefix telemetry/ --local-directory ./dump
+wrangler r2 object get streif-telemetry --prefix telemetry/ --local-directory ./dump
 ```
+
+⚠️ Відро **`streif-telemetry`**, не `streif-tiles`: у того ввімкнено публічний Development URL, і
+публічний доступ в R2 діє на все відро одразу — телеметрія лежала б відкрито. Причина докладно —
+в коментарі у `worker/wrangler.toml`.
 
 Якщо версія wrangler не вміє `--prefix` для `get` — простіше через `rclone` з S3-сумісним доступом до
 R2, або скачати теку з панелі Cloudflare. Об'єкти лежать як `telemetry/<день>/<install>-<ts>.json`,
@@ -99,6 +103,7 @@ Volda · виживання прогулянки на чужих OEM · здор
 ## Коли тест скінчиться
 
 1. `wrangler delete` для воркера;
-2. видалити префікс `telemetry/` у відрі;
+2. `wrangler r2 bucket delete streif-telemetry` — відро цілком (воно лише під тест, тож вичищати
+   окремі префікси не треба);
 3. прибрати телеметрію із застосунку (4 кроки в `app/build.gradle.kts`);
 4. видалити цю теку.
