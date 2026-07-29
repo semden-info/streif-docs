@@ -67,8 +67,16 @@ curl -X POST -d '{"install":"test"}' https://streif-telemetry.ВСТАВ-СВО�
 ## 3. Зняти дані з R2
 
 ```bash
-wrangler r2 object get streif-telemetry --prefix telemetry/ --local-directory ./dump
+python spike/telemetry/fetch_telemetry.py ./dump
 ```
+
+Потрібні ті самі змінні середовища, що для `spike/pipeline/upload_r2.py`
+(`R2_ACCOUNT_ID` · `R2_ACCESS_KEY` · `R2_SECRET_KEY`). Можна звузити період: `--since=2026-08-01`.
+
+⚠️ **Тут раніше стояла команда `wrangler r2 object get … --prefix … --local-directory …` — вона не
+існує.** Перевірено на живому wrangler 4.115 (2026-07-29): `r2 object get` бере РІВНО ОДИН об'єкт у
+формі `<bucket>/<key>`, ні `--prefix`, ні `--local-directory` немає. Тобто задокументований спосіб
+забрати дані впав би рівно тоді, коли вони вперше знадобляться. Звідси окремий скрипт.
 
 ⚠️ Відро **`streif-telemetry`**, не `streif-tiles`: у того ввімкнено публічний Development URL, і
 публічний доступ в R2 діє на все відро одразу — телеметрія лежала б відкрито. Причина докладно —
