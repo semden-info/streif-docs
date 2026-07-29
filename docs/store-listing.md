@@ -124,4 +124,16 @@ Streif er et ikke-kommersielt, allmennyttig prosjekt laget i Ørsta/Volda. Det e
 |---|---|
 | Іконка 512×512 | ✅ `docs/store-assets/play-icon-512.png` |
 | Скріншоти (мін. 2, треба 4-6) | ⏳ **знімати у Volda** — там мапа кольорова й плашка узгоджена. З Ulsteinvik кадр вийде безглуздий: «0,0% av Ulsteinvik» над зафарбованою Volda |
-| Feature graphic 1024×500 | ⏳ дизайн — рішення власника |
+| Feature graphic 1024×500 | 🟡 **чернетка є**: `play-feature-1024x500-en.png` / `-nb.png`. RGB без альфи (вимога Play). Права частина — **справжній** знімок зафарбованої Volda, не колаж: графіка показує механіку такою, якою вона є. Кегль підбирається автоматично під ширину колонки — норвезький рядок довший за англійський і при фіксованому кеглі наліз би на мапу саме в тій локалі, яку побачить більшість тестерів |
+
+### Про відео для FGS-декларації
+
+**Обов'язкове, не опційне** — перевірено на support.google.com 2026-07-29. Форма прямо каже:
+«Include a link to a video demonstrating each foreground service feature. The video should
+demonstrate the steps the user needs to take in your app in order to trigger the feature».
+Декларацію подають **усі** застосунки з targetSdk ≥ 34, які використовують foreground-служби; у нас
+`targetSdk = 36` і `FOREGROUND_SERVICE_LOCATION`, тож застосовується.
+
+⚠️ Попередній застосунок Дениса проходив без відео — майже напевно тому, що не мав
+foreground-служби (або таргетував SDK до 34, коли декларації ще не існувало). Це не прецедент.
+Сценарій зйомки — `play-fgs-declaration.md` §3.
