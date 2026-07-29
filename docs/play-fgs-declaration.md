@@ -134,11 +134,54 @@ No lighter-weight alternative is sufficient:
 
 ### 2.3 Video link
 
-Заповнити після зйомки (див. §3). Порада: **YouTube, видимість «Unlisted»** — доступ за посиланням без
-логіну, не з'являється в пошуку, посилання не протухає. Google Drive теж приймають, але легко забути
-відкрити доступ → отримаєш відмову з формулюванням «reviewer could not access the video».
+**YouTube, видимість «Unlisted»** — доступ за посиланням без логіну, не з'являється в пошуку,
+посилання не протухає. Google Drive теж приймають, але легко забути відкрити доступ → отримаєш
+відмову з формулюванням «reviewer could not access the video».
+
+**Субтитри накладати НЕ треба** (рішення 2026-07-29). Вони були альтернативою озвучці — способом
+пояснити те, чого не видно. Після перезйомки пояснювати нічого: інтерфейс і системні діалоги
+англійською, а форма має велике текстове поле. Замість титрів — список кроків із таймкодами нижче:
+той самий результат без редактора, експорту й ризику зсунути таймінги.
+
+### 2.4 Опис відео з таймкодами (дописати в кінець тексту декларації)
+
+```
+The linked video is a single continuous screen recording, no edits, made on the same build that
+testers receive.
+
+0:06  The app is opened for the first time. The map is fully visible and every building is grey —
+      nothing has been uncovered yet ("Revealed 0 · tap Start").
+0:15  Before any location is read, the app shows its own explanation of what location is used for.
+0:23  The user taps "Start walk". Only then does the system location prompt appear, and the user
+      selects "While using the app" — the app never requests background location.
+0:42  The notification shade is opened: an ongoing notification "Streif — walk · Uncovering
+      buildings on your path" with a Stop action is visible for the whole walk.
+0:50  The screen is switched off and the phone is carried normally, as during a real walk.
+1:38  The screen is turned on again: buildings the user walked past are now coloured, and the
+      counter has moved from 0 to 4 over 133 metres. This change is only possible because the
+      foreground service kept receiving location updates while the screen was off.
+2:06  The user taps "Stop walk".
+2:10  The notification shade is opened again: the Streif notification is gone. Location access
+      ends when the user ends the walk.
+```
 
 ---
+
+> ✅ **ВІДЕО ЗНЯТО 2026-07-29, другий дубль — перевірено покадрово (ffmpeg + розбір кадрів).**
+> Знято на **versionCode 3**, тобто саме на збірці, яку отримають тестери. Мова системи — англійська,
+> тож рецензент читає системні діалоги без перекладу. Усі шість кроків присутні:
+>
+> | Крок | Час | Що в кадрі |
+> |---|---|---|
+> | 1 | 0:06–0:18 | «Revealed 0 · tap Start» + onboarding + наше пояснення про локацію (обидва екрани) |
+> | 2 | 0:23 | «Allow Streif to access this device's location?» → Precise → тап по **While using the app** (індикатор натискання видно) |
+> | 3 | 0:42 | «Streif — walk · Uncovering buildings on your path» + дія **Stop** |
+> | 4 | ~0:50–1:34 | згаслий екран під час реальної ходьби |
+> | 5 | 1:38–2:02 | `Revealed 0 → 4`, 133 м, будинки кольорові |
+> | 6 | 2:06–2:10 | «Revealed 4 · **tap Start**» і шторка **без нотифікації Streif** — доказ, що доступ припинився |
+>
+> ⚠️ Сам файл у git **не кладеться** (`.gitignore`: `*.mp4` тощо) — репозиторій публічний, а запис
+> екрана містить екран блокування, шторку й реальний маршрут вулицями.
 
 ## 3. Сценарій відео — на один дубль
 
