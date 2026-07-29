@@ -1,9 +1,17 @@
 """Згенерувати CSV для імпорту в Play Console → Безпека даних.
 
-Джерело правди — docs/play-data-safety.md §2.1-2.5. Кожне значення нижче має там обґрунтування;
+    python spike/play_data_safety_csv.py <експорт із консолі> <файл для імпорту>
+
+Джерело правди — `docs/play-data-safety.md` §2.1-2.5. Кожне значення нижче має там обґрунтування;
 якщо міняєш тут — міняй і там, інакше документ і форма розійдуться (а рецензент Play читає обидва).
+
+⚠️ **Формат критичний, не лише зміст.** Перша версія робила `DictReader` → `DictWriter`, і Play
+відхилив файл із «Не вдалося завантажити»: `utf-8-sig` дописував BOM (в експорті його немає), а
+writer додавав перенос у кінці (в експорті його теж немає). Тому тут файл обробляється **порядково**
+й переписуються ЛИШЕ ті рядки, що справді змінились — решта віддається байт-у-байт.
 """
 import csv
+import io
 import sys
 
 SRC, DST = sys.argv[1], sys.argv[2]
@@ -33,50 +41,65 @@ UNSELECT = {("PSL_DATA_TYPES_APP_PERFORMANCE", "PSL_CRASH_LOGS")}
 
 Q, R, V = "Question ID (machine readable)", "Response ID (machine readable)", "Response value"
 
-rows = list(csv.DictReader(open(SRC, encoding="utf-8-sig")))
-changes = []
 
-for row in rows:
-    q, resp = row[Q], row[R]
+def encode(fields):
+    buf = io.StringIO()
+    csv.writer(buf, lineterminator="").writerow(fields)
+    return buf.getvalue()
 
-    if (q, resp) in UNSELECT and row[V]:
-        changes.append(f"ЗНЯТО   {resp}")
-        row[V] = ""
-        continue
 
+def wanted(q, resp, old):
+    """Яке значення має бути в цьому рядку; None = не чіпати."""
+    if (q, resp) in UNSELECT:
+        return "" if old else None
     if not q.startswith("PSL_DATA_USAGE_RESPONSES:"):
-        continue
+        return None
     parts = q.split(":")
-    if len(parts) < 3:
-        continue
-    dtype, key = parts[1], parts[2]
-    if dtype not in USAGE:
-        continue
-    ephemeral, control, purposes = USAGE[dtype]
-
+    if len(parts) < 3 or parts[1] not in USAGE:
+        return None
+    ephemeral, control, purposes = USAGE[parts[1]]
+    key = parts[2]
     if key == "PSL_DATA_USAGE_COLLECTION_AND_SHARING":
         # Тільки збираємо. Shared скрізь «ні»: дані йдуть на НАШ воркер і в НАШЕ приватне відро,
         # Cloudflare — обробник, не отримувач.
-        new = "true" if resp == "PSL_DATA_USAGE_ONLY_COLLECTED" else ""
-    elif key == "PSL_DATA_USAGE_EPHEMERAL":
-        new = "true" if ephemeral else "false"
-    elif key == "DATA_USAGE_USER_CONTROL":
-        new = "true" if resp.endswith(control) else ""
-    elif key == "DATA_USAGE_COLLECTION_PURPOSE":
-        new = "true" if resp in purposes else ""
-    elif key == "DATA_USAGE_SHARING_PURPOSE":
-        new = ""          # нічого не передаємо → мета передавання порожня
-    else:
+        return "true" if resp == "PSL_DATA_USAGE_ONLY_COLLECTED" else ""
+    if key == "PSL_DATA_USAGE_EPHEMERAL":
+        return "true" if ephemeral else "false"
+    if key == "DATA_USAGE_USER_CONTROL":
+        return "true" if resp.endswith(control) else ""
+    if key == "DATA_USAGE_COLLECTION_PURPOSE":
+        return "true" if resp in purposes else ""
+    if key == "DATA_USAGE_SHARING_PURPOSE":
+        return ""          # нічого не передаємо → мета передавання порожня
+    return None
+
+
+raw = open(SRC, encoding="utf-8", newline="").read()
+lines = raw.split("\r\n")
+header = next(csv.reader([lines[0]]))
+iq, ir, iv = header.index(Q), header.index(R), header.index(V)
+
+out = [lines[0]]
+changes = []
+for line in lines[1:]:
+    if not line:
+        out.append(line)
         continue
+    fields = next(csv.reader([line]))
+    new = wanted(fields[iq], fields[ir], fields[iv])
+    if new is None or new == fields[iv]:
+        out.append(line)                       # незмінене — віддаємо ОРИГІНАЛЬНИЙ текст
+        continue
+    changes.append("%-28s %-38s %-34s → %s" % (
+        fields[iq].split(":")[1] if ":" in fields[iq] else fields[iq],
+        fields[iq].split(":")[2] if fields[iq].count(":") >= 2 else "",
+        fields[ir] or "(значення)", new or "(порожньо)"))
+    fields[iv] = new
+    out.append(encode(fields))
 
-    if new != row[V]:
-        changes.append(f"{dtype:28} {key:38} {resp or '(значення)':34} → {new or '(порожньо)'}")
-        row[V] = new
-
-with open(DST, "w", encoding="utf-8-sig", newline="") as f:
-    w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
-    w.writeheader()
-    w.writerows(rows)
+# Без BOM і без переносу в кінці — точно як в експорті.
+with open(DST, "w", encoding="utf-8", newline="") as f:
+    f.write("\r\n".join(out))
 
 print(f"змін: {len(changes)}")
 for c in changes:
