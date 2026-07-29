@@ -144,7 +144,7 @@ Streif er et ikke-kommersielt, allmennyttig prosjekt laget i Ørsta/Volda. Det e
 ### English
 
 ```
-First closed test build.
+First test build.
 
 Walk past a building and it lights up in colour by type. Also: nature POIs, a progress screen, optional Google Drive backup, four map styles.
 
@@ -158,7 +158,7 @@ Please report anything odd — especially a building that lights up when you did
 ### Norsk (no-NO, bokmål)
 
 ```
-Første versjon i lukket test.
+Første testversjon.
 
 Gå forbi en bygning, og den lyser opp i farge etter type. Dessuten: turmål i naturen, framgangsskjerm, valgfri sikkerhetskopi til Google Disk og fire kartstiler.
 
