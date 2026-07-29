@@ -28,7 +28,7 @@
 - `CameraUpdateFactory.scrollBy` у 13.x **немає** — пан через `newLatLng` (зсув target).
 
 ## Проєкт і дані
-- Android Studio проєкт: `C:\Users\mail\AndroidStudioProjects\Streif` (package `no.streif.spike`), MapLibre `13.3.0`, AGP 9.2.1 (Kotlin вбудований — окремий плагін не потрібен).
+- Android Studio проєкт: `C:\Users\mail\AndroidStudioProjects\Streif` (package **`app.streif`**, перейменовано з `no.streif.spike` 2026-07-29 — §B.0; на телефоні старий пакет лишився окремим застосунком під ярликом «Streif old»), MapLibre `13.3.0`, AGP 9.2.1 (Kotlin вбудований — окремий плагін не потрібен).
 - Ключовий код матчингу: `BuildingStore.kt` (інкрементальний bbox-grid; `candidatesPoint` → edge+centroid-дист; nearest для маркування), `TrackingRepository.kt` (`matchAt`: edge-eligibility + centroid-closest-approach + `moved`-guard; gate/reveal/persist), `AreaLoader`/`AreaSource`/`AreaCache` (on-demand D24). Перф: `PerfProbe.kt`/`PerfHarness.kt` (frame-listener, лог `SPIKEPERF`); `MainActivity.kt` (walk + perf-режими, intent-extras).
 - Assets (seed для перф-режимів): `buildings.pmtiles` (сіра база), `buildings.geojson` (геометрія overlay + кільця для edge/centroid-матчингу D25.1), `route.json` (синтетична змійка, 3216 точок), `style.json` (база + сірі будинки; visited-шар у коді). *На walk-режимі дані — on-demand (D24), не seed.*
 - Регенерація даних/маршруту: `spike/build_osm_tiles.py` (tippecanoe), `spike/gen_route.py` (маршрут).
@@ -42,7 +42,7 @@
 
 ### Режими запуску (intent-extras)
 - **bench** (статичні N, латентність + frame-time під паном після осідання):
-  `am start -n no.streif.spike/.MainActivity --es mode bench` (додати `--ez sync true` для контрасту)
+  `am start -n app.streif/.MainActivity --es mode bench` (додати `--ez sync true` для контрасту)
 - **combo** (пан ОДНОЧАСНО з апдейтами — combined-стрес):
   `… --es mode combo` (та `--ez sync true`)
 - **replay** (симульований GPS, накопичення + пам'ять):

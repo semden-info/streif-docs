@@ -7,7 +7,10 @@
 
 ## 0. Підготовка (Claude робить, коли телефон під'єднаний)
 - `install -r app-debug.apk`
-- `pm clear no.streif.spike` — **чистий старт** (стирає старі логи + кеш зон → справжній on-demand-тест).
+- `pm clear app.streif` — **чистий старт** (стирає старі логи + кеш зон → справжній on-demand-тест).
+  ⚠️ **З 2026-07-29 не запускати не подумавши:** цей пакет тепер несе **бойовий прогрес** (494 розкриття,
+  перенесені з `no.streif.spike` при зміні `applicationId`, §B.0), і `pm clear` стирає Room разом з усім
+  іншим. Перед ним — знімати копію за `android-device-data-pull` (обов'язково з `-wal`).
 - видати дозволи: `pm grant … ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION / POST_NOTIFICATIONS / ACTIVITY_RECOGNITION`.
 - `battery.ps1 start` (Stage C) — якщо міряємо батарею тією ж прогулянкою (кабель ще під'єднаний).
 - `svc power stayon true` — лише для стаціонарної перевірки; для реальної прогулянки/батареї **навпаки** від'єднати.

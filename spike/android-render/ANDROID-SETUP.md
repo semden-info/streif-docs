@@ -2,7 +2,7 @@
 
 > **Статус:** проєкт давно збутстрапнуто й розгорнуто далеко за межі v1. Цей файл тримає
 > (а) **поточний спосіб білду/запуску** (CLI), (б) первинний bootstrap як історичний запис.
-> Поточний стан spike → `SPIKE-STATUS.md`. Проєкт Android Studio: `C:\Users\mail\AndroidStudioProjects\Streif` (пакет `no.streif.spike`).
+> Поточний стан spike → `SPIKE-STATUS.md`. Проєкт Android Studio: `C:\Users\mail\AndroidStudioProjects\Streif` (пакет **`app.streif`** — перейменовано з `no.streif.spike` 2026-07-29, release-checklist §B.0; в історичних записах нижче лишається старе ім'я).
 
 ## Поточний білд/запуск (CLI — НЕ Android Studio «Run ▶»)
 Збірка й тест драйвляться через `gradlew` + `adb` (JBR як `JAVA_HOME`), не через кнопку Run:
@@ -11,14 +11,14 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 gradlew.bat :app:assembleDebug        # збірка APK
 gradlew.bat :app:testDebugUnitTest    # юніт-тести матчингу (BuildingStore)
 adb install -r app/build/outputs/apk/debug/app-debug.apk
-adb shell am start -n no.streif.spike/.MainActivity   # walk-режим (on-demand)
+adb shell am start -n app.streif/.MainActivity   # walk-режим (on-demand)
 ```
 - **Режими `MainActivity`:** `walk` (on-demand, реальний/тестовий трекінг) і `perf` (seed PMTiles + `PerfHarness` для рендер-бенчу).
 - **Польовий тест + маркування** → `SPIKE2-WALKTEST.md`. **Батарея** → `SPIKE2-BATTERY.md`.
 - **Дані будинків — on-demand (D24):** тягнуться зонами на льоту (Runtime Overpass, тест); `buildings.pmtiles` лишився лише як seed для `perf`-режимів.
 
 ## Ключові факти збірки (як налаштовано)
-- Пакет `no.streif.spike` · Kotlin · Min SDK 24 · Views (не Compose у spike).
+- Пакет `app.streif` · Kotlin · Min SDK 24 · Views (не Compose у spike).
 - MapLibre: `org.maplibre.gl:android-sdk:13.3.0`.
 - PMTiles вантажити `pmtiles://file://` (копія asset→`filesDir`); `pmtiles://asset://` крешить (D21); `.pmtiles`-asset потребує `noCompress`.
 - Дозволи: `INTERNET`, `ACCESS_FINE/COARSE_LOCATION`, `FOREGROUND_SERVICE(_LOCATION)`, `POST_NOTIFICATIONS`, `ACTIVITY_RECOGNITION`.
