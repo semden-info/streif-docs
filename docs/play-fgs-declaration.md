@@ -15,6 +15,18 @@
 
 Інших FGS-типів у застосунку **немає** — у декларації відмічати тільки `location`.
 
+> ✅ **Підтверджено на завантаженому бандлі (2026-07-29), а не лише за нашим вихідним маніфестом.**
+> Перевіряти було що: WorkManager у нас використовується двічі (`BackupWorker`, `TelemetryWorker`), а
+> свіжі версії тягнуть за собою `FOREGROUND_SERVICE_DATA_SYNC` і власну службу типу `dataSync`. Якби
+> це сталося, декларація на самий лише `location` виявилась би неповною — і зʼясувалося б це аж на
+> формі, після зйомки відео. В об'єднаному маніфесті release-варіанту:
+> `foregroundServiceType="location"` — **один-єдиний**, а з FGS-дозволів лише `FOREGROUND_SERVICE`
+> і `FOREGROUND_SERVICE_LOCATION`.
+>
+> Там же підтверджено ключове твердження §2 і `play-data-safety.md`: **`ACCESS_BACKGROUND_LOCATION`
+> у бандлі немає**. Повний перелік — 12 дозволів, серед них жодного несподіваного (локація,
+> активність, мережа, сповіщення, WAKE_LOCK, BOOT_COMPLETED).
+
 ### Вибір use case
 
 Пресети Play для `location`: *user-initiated location sharing* · *navigation* · ~~*geofencing*~~
