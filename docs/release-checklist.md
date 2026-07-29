@@ -220,13 +220,31 @@ Android-OAuth-клієнт прив'язаний до пари *(package name, S
 | 3 | *App content* → **Privacy policy** | вставити той URL |
 | 4 | *App content* → **Data safety** | за `play-data-safety.md` |
 | 5 | *App content* → **Foreground service permissions** | за `play-fgs-declaration.md`; **потрібне відео** → зняти заздалегідь (§3) |
-| 6 | *App content* → решта декларацій | Ads: **No** · Content rating (анкета — Everyone) · Target audience: **не діти** · News app: No · Government app: No · Financial features: No · Data deletion: за §4 Data safety · Health apps: No |
+| 6 | *App content* → решта декларацій | Ads: **No** · Content rating (анкета — Everyone) · Target audience: **не діти** · News app: No · Government app: No · Financial features: No · Data deletion: за §4 Data safety · **Health apps: див. нижче** |
+| 6a | *App content* → **Додатки для здоров'я** ⚠️ форма З'ЯВЛЯЄТЬСЯ, її не оминути | Тригер — дозвіл `ACTIVITY_RECOGNITION`; Play сам пише «якщо функцій здоров'я немає — вилучіть дозвіл». **Рішення Дениса (2026-07-29): лишаємо дозвіл, відповідаємо «Інше»** з описом, що це заборонний фільтр.<br>**Підстава з коду, не з припущення:** `ActivityGate` використовує AR виключно щоб на `IN_VEHICLE`/`ON_BICYCLE` **припинити** зарахування — жодної фітнес-метрики не збирає й не показує. Альтернатива (прибрати дозвіл) коштувала б якості: лишився б тільки фільтр `MAX_PED_SPEED = 7 м/с` (~25 км/год), тож повільна їзда містом давала б хибні розкриття — рівно те, що тест і має міряти.<br>⚠️ **НЕ ставити «Активність і фітнес»**: неправда, і затягує в політику додатків для здоров'я. Крок 2 форми — доступу до даних здоров'я немає (у 12 дозволах бандла жодного від Health Connect); крок 3 — скрізь «Ні».<br>Текст відповіді — одразу під таблицею |
 | 7 | *Store listing* — англійська | Назва, коротким описом (80 симв.), повний опис, скріншоти (мін. 2, телефон), feature graphic 1024×500, іконка 512×512 |
 | 8 | *Store listing* — **норвезька (bokmål)** | Додати локалізацію `no-NO`. У застосунку вже є `values-nb` + `values-nn` ✅ |
 | 9 | Зібрати **`.aab`** (не `.apk`) | Для застосунків, створених після серпня 2021, APK більше не приймають |
 | 10 | Створити трек **Closed testing** | Список тестерів — email'и або Google Group. Group зручніша: додавати людей без нового релізу |
 | 11 | Завантажити `.aab`, вказати release notes | Перший реліз |
 | 12 | Розіслати **opt-in URL** тестерам | Без переходу за цим посиланням тестер застосунку в Play **не побачить** |
+
+**Текст для поля «Інше» у формі «Додатки для здоров'я»** (англійською — його читає рецензент):
+
+```
+Streif is a walking and local-exploration map app. It has no health or fitness
+features: it does not track workouts, heart rate, calories, steps or sleep, it
+gives no health advice, and it is not integrated with Health Connect.
+
+ACTIVITY_RECOGNITION is used only as a negative filter. While a walk is running,
+the app uses activity recognition to detect that the user is IN_VEHICLE or
+ON_BICYCLE and then STOPS crediting progress, so that places passed by car or
+bike are not counted as visited. The permission is never used to record, display
+or share physical activity.
+
+If the user does not grant the permission, the app keeps working and falls back
+to a simple speed threshold.
+```
 
 ### B.4 Про правило «12 тестерів / 14 днів»
 
