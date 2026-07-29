@@ -229,22 +229,13 @@ Android-OAuth-клієнт прив'язаний до пари *(package name, S
 | 11 | Завантажити `.aab`, вказати release notes | Перший реліз |
 | 12 | Розіслати **opt-in URL** тестерам | Без переходу за цим посиланням тестер застосунку в Play **не побачить** |
 
-**Текст для поля «Інше» у формі «Додатки для здоров'я»** (англійською — його читає рецензент):
+**Текст для поля «Інше» у формі «Додатки для здоров'я».** ⚠️ Поле має ліміт **250 символів** (з'ясувалося на місці — перша, розлога версія була ~700 і не влізла). Нижче — 234, з запасом:
 
 ```
-Streif is a walking and local-exploration map app. It has no health or fitness
-features: it does not track workouts, heart rate, calories, steps or sleep, it
-gives no health advice, and it is not integrated with Health Connect.
-
-ACTIVITY_RECOGNITION is used only as a negative filter. While a walk is running,
-the app uses activity recognition to detect that the user is IN_VEHICLE or
-ON_BICYCLE and then STOPS crediting progress, so that places passed by car or
-bike are not counted as visited. The permission is never used to record, display
-or share physical activity.
-
-If the user does not grant the permission, the app keeps working and falls back
-to a simple speed threshold.
+The app has no health or fitness features. ACTIVITY_RECOGNITION is used only to detect IN_VEHICLE/ON_BICYCLE and then STOP crediting progress, so places passed by car do not count as visited. Activity is never stored, shown or shared.
 ```
+
+Три факти, які мусили вціліти при стисканні й вціліли: **фіч здоров'я немає** · дозвіл **зупиняє** зарахування, а не відстежує користувача · активність **нікуди не йде**. Якщо колись доведеться писати довшу версію (напр. на запит рецензента), додати: не інтегровано з Health Connect, і без дозволу застосунок працює, деградуючи до порогу швидкості.
 
 ### B.4 Про правило «12 тестерів / 14 днів»
 
