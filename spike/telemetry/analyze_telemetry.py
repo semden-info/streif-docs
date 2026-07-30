@@ -50,8 +50,18 @@ def main(folder):
     if not batches:
         print("Пакетів не знайдено. Спершу зняти з R2 — див. README.md")
         return
+    # ⚠️ НЕ «телефонів». `install` заводиться на кожну встановлену КОПІЮ застосунку, тож перевстановлення
+    # й очищення даних дають новий id — кількість id завжди ≥ кількості людей. Спіймано на першій же
+    # вибірці 2026-07-29: 16 id виявились ДВОМА пристроями (14 з них — порожні пакети від
+    # перевстановлень і, найпевніше, автотестів Play на фермі пристроїв). Писати «телефонів: 16» —
+    # означає щодня перечитувати звіт неправильно.
     installs = {b.get("install") for b in batches}
-    print(f"пакетів: {len(batches)} · телефонів: {len(installs)}\n")
+    active_installs = {b.get("install") for b in batches if b.get("walks")}
+    devices = {b.get("device", "?") for b in batches}
+    print(f"пакетів: {len(batches)} · install-ід: {len(installs)} · "
+          f"із них з прогулянками: {len(active_installs)} · моделей пристроїв: {len(devices)}")
+    print("⚠️ install-ід — це встановлена КОПІЯ застосунку, а не людина: перевстановлення чи очищення")
+    print("   даних дає новий id, тож id завжди більше або дорівнює кількості тестерів.\n")
 
     # ── 1. Якість матчингу ────────────────────────────────────────────────────────────────────────
     # `marks` — те, що тестер сам позначив. `ok=false` означає «цього будинку я не проходив», тобто
@@ -144,26 +154,57 @@ def main(folder):
         print("  дублікатів копії в Drive не траплялось (фікс §B.6 #13 поки не мав нагоди спрацювати)")
 
     # ── 4. Retention (P10) ────────────────────────────────────────────────────────────────────────
-    # Беремо ОСТАННІЙ пакет кожного телефона: retention у ньому кумулятивний.
+    # Беремо ОСТАННІЙ пакет кожного install-ід: retention у ньому кумулятивний.
     latest = {}
     for b in batches:
         i = b.get("install")
         if i and (i not in latest or b.get("ts", 0) > latest[i].get("ts", 0)):
             latest[i] = b
+
+    # ⚠️ **Період беремо з `walks[].start`, а не з `retention.days`** — і це не причепка до точності,
+    # без цього метрика показує протилежне правді. `days` на клієнті міряється від віку ВСТАНОВЛЕННЯ,
+    # тож перевстановлення або відновлення з Drive скидає його в нуль, хоча прогулянки на місці.
+    # Спіймано 2026-07-29 на власних даних: пакет казав `days: 0` при `activeDays: 16`, а насправді
+    # прогулянки лежали з 05.07 по 29.07 — 24 доби. Тобто звіт рапортував «нуль утримання» саме там,
+    # де утримання й було. `activeDays` навпаки лишаємо з пакета: він порахований на пристрої в
+    # ЛОКАЛЬНОМУ часі, а тут ми б розкладали по днях UTC і збивали межу доби для вечірніх прогулянок.
+    starts = defaultdict(list)
+    for b in batches:
+        for w in b.get("walks", []):
+            s = w.get("start")
+            if isinstance(s, (int, float)) and s > 0:
+                starts[b.get("install")].append(s)
+
     print("\n── 4. Retention (P10 — міряємо, не припускаємо) ──")
-    rows = []
+    rows, idle = [], defaultdict(int)
     for i, b in latest.items():
         r = b.get("retention") or {}
-        days = r.get("days", 0)
-        active = r.get("activeDays", 0)
-        rows.append((days, active, r.get("walks", 0), r.get("reveals", 0), i))
+        st = sorted(starts.get(i, []))
+        if not st:
+            idle[b.get("device", "?")] += 1
+            continue
+        span = int(round((st[-1] - st[0]) / DAY))
+        rows.append((span, r.get("activeDays", 0), r.get("walks", 0), r.get("reveals", 0),
+                     i, r.get("days", 0)))
     rows.sort(reverse=True)
-    print(f"  {'днів':>5} {'активних':>9} {'прогулянок':>11} {'розкрито':>9}  телефон")
-    for days, active, walks, reveals, i in rows:
-        print(f"  {days:>5} {active:>9} {walks:>11} {reveals:>9}  {str(i)[:8]}")
+    print(f"  {'діб':>4} {'активних':>9} {'прогулянок':>11} {'розкрито':>9}  install")
+    for span, active, walks, reveals, i, claimed in rows:
+        # Розбіжність між віком даних і віком встановлення — сама по собі сигнал: копію переставляли.
+        mark = f"  ↺ у пакеті days={claimed}" if span - claimed > 1 else ""
+        print(f"  {span:>4} {active:>9} {walks:>11} {reveals:>9}  {str(i)[:8]}{mark}")
+
+    if idle:
+        n = sum(idle.values())
+        print(f"\n  install-ід без жодної прогулянки: {n} "
+              f"({' · '.join(f'{d} ×{c}' for d, c in sorted(idle.items(), key=lambda kv: -kv[1]))})")
+        print("  → або перевстановлення, або автотести Play на фермі пристроїв (свіже встановлення на")
+        print("    зарядці + згода default-ON = один порожній пакет), або тестер, що встановив і не")
+        print("    гуляв. Останнє — справжній сигнал утримання; перші два — шум. Розрізняти за")
+        print("    моделлю пристрою й купками часу отримання.")
+
     if rows:
         alive = sum(1 for d, a, *_ in rows if d >= 7 and a >= 2)
-        print(f"\n  телефонів із ≥7 днів і ≥2 активними днями: {alive} з {len(rows)}")
+        print(f"\n  install-ід із ≥7 діб даних і ≥2 активними днями: {alive} з {len(rows)} активних")
         print("  → це і є питання P10. Мала вибірка — дивитись на форму, не на відсоток.")
 
 
