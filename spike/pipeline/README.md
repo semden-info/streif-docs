@@ -406,3 +406,17 @@ python build_poi.py poi.geojson poi_raw.json \
 - **Custom domain** `tiles.streif.no` перед першим зовнішнім тестером (r2.dev — dev-only, rate-limited) → потім вимкнути r2.dev + Smart Tiered Cache.
 - **FKB-геометрія** через публічного партнера (kommune/fylkeskommune/Høgskulen) — апгрейд без зміни архітектури (Matrikkelen-номер як стабільний id). Див. `docs/partner-outreach.md`.
 - **Overpass-era розкриття** — одноразово стерти (dogfood; `source` у Room розрізняє osm/matrikkelen).
+
+## ⚠️ Схема категорій розійшлась із застосунком (2026-08-02)
+
+`build_tiles.py::category()` і його дзеркало `osm_classify()` — **стара шістка**. Застосунок від
+`versionCode 10` рахує **11 змістових + `Andre`** з сирого `bt` на клієнті (`BuildingCategory.kt`,
+D42 / `08` §15.11), тому властивість `type` у тайлі для фарбування мапи більше не використовується —
+лише як фолбек для будівель без `bt`.
+
+⛔ **Не «полагоджувати» це поодинці.** Переписати `category()` під 12 можна **тільки разом** із
+перезбіркою тайлів і підйомом `DATA_VERSION`, а перезбірка заблокована **заморозкою даних**
+(`release-checklist` §B.7). Підйом `DATA_VERSION` заразом чистить кеш зон на всіх пристроях — тобто
+спорожнює те, на чому тримається P32.
+
+Восьма копія списку категорій — `retag_kommune.py::CATS`. Той самий припис.
