@@ -224,9 +224,11 @@ def contrast(h1, h2):
         a, b = b, a
     return (a + 0.05) / (b + 0.05)
 
-# ---------------- palette ----------------
+# ---------------- palettes ----------------
 
-PAL = [
+# ⚠️ ВІДХИЛЕНА палітра `08` §15.10 — лишається ДЕФОЛТОМ навмисно, щоб числа §15.11.2
+# відтворювались рядок-у-рядок. Не міняти: це еталон, а не пропозиція.
+PAL_REJECTED = [
     ("Bolig",                 "#2E8B3D"),
     ("Garasje/uthus",         "#E0392B"),
     ("Landbruk/fiske",        "#6E4B23"),
@@ -241,6 +243,58 @@ PAL = [
     ("Andre",                 "#9AA0A6"),
 ]
 
+# Варіант A (12 + обведення) — те, що лежить у `BuildingCategory.kt::A_HEX`.
+PAL_A12 = [
+    ("Bolig",                 "#617F11"),
+    ("Garasje/uthus",         "#B53850"),
+    ("Landbruk/fiske",        "#602B0F"),
+    ("Hytte",                 "#F38C0F"),
+    ("Industri/energi",       "#164150"),
+    ("Samfunn/kultur",        "#36AFBC"),
+    ("Lager",                 "#A9A087"),
+    ("Handel/kontor",         "#2883C6"),
+    ("Servering/overnatting", "#D7634D"),
+    ("Helse",                 "#963681"),
+    ("Sakral",                "#2551D7"),
+    ("Andre",                 "#8F8A93"),
+]
+
+# Варіант B (10 без обведення) — A12 із двома злиттями кольору (Helse→Samfunn, Lager→Landbruk).
+PAL_B10 = [(n, h) for n, h in PAL_A12 if n not in ("Helse", "Lager")]
+
+# Чинна шістка (`BuildingType`) — точка відліку.
+PAL_LEGACY6 = [
+    ("housing",     "#3FA340"),
+    ("hytte",       "#F2A007"),
+    ("public",      "#2479C2"),
+    ("sacral",      "#9A3DC2"),
+    ("outbuilding", "#E0392B"),
+    ("other",       "#CC5599"),
+]
+
+PALETTES = {
+    "rejected": PAL_REJECTED,
+    "a12": PAL_A12,
+    "b10": PAL_B10,
+    "legacy6": PAL_LEGACY6,
+}
+
+# ⚠️ POI — власні 7 кольорів `PoiType.kt` на ТОМУ САМОМУ екрані. §15.11.7: правильна перевірка
+# робиться на ОБ'ЄДНАНОМУ наборі, і її не робив ніхто. Прапорець `--with-poi`.
+#
+# ⚠️ Читати з поправкою: POI — це тінтований SDF-гліф у колі, тобто носій типу там подвійний
+# (форма + колір), тоді як будівля має лише заливку. Колізія «будівля ↔ POI» м'якша за
+# «будівля ↔ будівля», але не нульова: обидва лежать на одному екрані, і колір читається першим.
+POI = [
+    ("poi:viewpoint",  "#0E8A8A"),
+    ("poi:church",     "#9A3DC2"),
+    ("poi:cultural",   "#8D6E63"),
+    ("poi:badeplass",  "#2196C4"),
+    ("poi:hut",        "#C77F00"),
+    ("poi:shelter",    "#3FA340"),
+    ("poi:peak",       "#607D8B"),
+]
+
 BACKGROUNDS = [
     ("topograatone paper (lys)", "#F4F2EF"),
     ("topograatone landmasse",   "#E6E3DE"),
@@ -250,17 +304,79 @@ BACKGROUNDS = [
     ("mork bakgrunn (djup)",     "#121212"),
 ]
 
+# Найтемніша ділянка підложки — те, чого вимагає правило §15.11.3, а не «папір».
+DARKEST_BG = "#C2BFBA"
 
-def pair_table(kind, model):
-    labs = {n: sim_lab(h, kind, model) for n, h in PAL}
+
+def composite(fg_hex, bg_hex, alpha):
+    """Заливка з `fillOpacity` поверх підложки.
+
+    ⚠️ Змішування рахується в **sRGB** (gamma space), бо MapLibre GL блендить у
+    несирґб-фреймбуфері саме так. Це не «фізично правильно», зате це те, що видно на екрані.
+    """
+    if alpha >= 1.0:
+        return fg_hex
+    f, b = hex2rgb(fg_hex), hex2rgb(bg_hex)
+    return rgb2hex(tuple(alpha * f[i] + (1 - alpha) * b[i] for i in range(3)))
+
+
+def pair_table(kind, model, pal=None):
+    pal = pal if pal is not None else PAL
+    labs = {n: sim_lab(h, kind, model) for n, h in pal}
     rows = []
-    for (n1, _), (n2, _) in combinations(PAL, 2):
+    for (n1, _), (n2, _) in combinations(pal, 2):
         rows.append((ciede2000(labs[n1], labs[n2]), n1, n2))
     rows.sort()
     return rows
 
 
+def combined_report(pal, label, alpha, bg):
+    """Найгірші пари по всіх режимах зору — стисло, для набору будь-якого розміру."""
+    eff = [(n, composite(h, bg, alpha)) for n, h in pal]
+    print("\n== %s  (n=%d, alpha=%.2f over %s) ==" % (label, len(eff), alpha, bg))
+    for kind in ('normal', 'deutan', 'protan', 'tritan'):
+        worst = None
+        for model in ('vienot', 'machado'):
+            rows = pair_table(kind, model, eff)
+            if worst is None or rows[0][0] < worst[0][0]:
+                worst = rows
+            if kind == 'normal':
+                break
+        thr = 17.0 if kind == 'normal' else (8.0 if kind == 'tritan' else 10.0)
+        bad = [r for r in worst if r[0] < thr]
+        print("   %-7s min dE %5.2f  (поріг %.0f) ; нижче порога: %d"
+              % (kind, worst[0][0], thr, len(bad)))
+        for d, a, b in worst[:5]:
+            print("       %5.2f  %-22s <-> %-22s%s" % (d, a, b, " <<<" if d < thr else ""))
+
+
 def main():
+    import sys
+    global PAL
+    argv = sys.argv[1:]
+    name = "rejected"
+    with_poi = False
+    alpha = 1.0
+    bg = "#F4F2EF"
+    for a in argv:
+        if a.startswith("--palette="):
+            name = a.split("=", 1)[1]
+        elif a == "--with-poi":
+            with_poi = True
+        elif a.startswith("--opacity="):
+            alpha = float(a.split("=", 1)[1])
+        elif a.startswith("--bg="):
+            bg = a.split("=", 1)[1]
+    PAL = list(PALETTES[name])
+    base_pal = list(PAL)
+    if with_poi:
+        PAL = PAL + POI
+    if alpha < 1.0:
+        PAL = [(n, composite(h, bg, alpha)) for n, h in PAL]
+    print("== вхідні умови (§15.11.7 — без них числа не відтворити) ==")
+    print("   палітра: %s (n=%d)%s ; alpha=%.2f ; підложка змішування: %s"
+          % (name, len(PAL), " + POI" if with_poi else "", alpha, bg))
+
     err = validate()
     print("== CIEDE2000 self-test vs Sharma et al. published set ==")
     print("   pairs tested: %d, max abs error: %.6f  -> %s"
@@ -323,5 +439,41 @@ def main():
             if c < 3.0:
                 print("     %-22s vs %-26s %.2f" % (n, bn, c))
 
+    # ── §15.11.7: три умови, які в первинному вимірі не виконувались ─────────────────────────
+    print("\n== 4. Суворі умови §15.11.3 (те, чого первинний вимір НЕ робив) ==")
 
-main()
+    print("\n   4a. Контраст до НАЙТЕМНІШОЇ ділянки підложки (%s), не до паперу:" % DARKEST_BG)
+    fails = [(n, contrast(h, DARKEST_BG)) for n, h in base_pal if contrast(h, DARKEST_BG) < 3.0]
+    print("       нижче 3:1 — %d із %d" % (len(fails), len(base_pal)))
+    for n, c in sorted(fails, key=lambda x: x[1]):
+        print("         %-22s %.2f" % (n, c))
+
+    print("\n   4b. Режим «природа» (fillOpacity 0.55) — заливка змішана з підложкою:")
+    for bgname, bghex in (("папір", "#F4F2EF"), ("найтемніша", DARKEST_BG)):
+        nat = [(n, composite(h, bghex, 0.55)) for n, h in base_pal]
+        rows = min((pair_table('deutan', m, nat) for m in ('vienot', 'machado')),
+                   key=lambda r: r[0][0])
+        low = [n for n, h in nat if contrast(h, bghex) < 3.0]
+        print("       над «%s»: deutan min dE %.2f ; контраст <3:1 у %d із %d"
+              % (bgname, rows[0][0], len(low), len(nat)))
+        for d, a, b in rows[:3]:
+            print("           %5.2f  %-22s <-> %-22s" % (d, a, b))
+
+    print("\n   4c. ОБ'ЄДНАНИЙ набір із POI — те, чого не робив ніхто:")
+    combined_report(base_pal + POI, "будівлі + POI", 1.0, "#F4F2EF")
+    print("\n       дублікати HEX у об'єднаному наборі:")
+    seen = {}
+    for n, h in base_pal + POI:
+        seen.setdefault(h.upper(), []).append(n)
+    dups = {h: ns for h, ns in seen.items() if len(ns) > 1}
+    if dups:
+        for h, ns in dups.items():
+            print("         %s  %s" % (h, " = ".join(ns)))
+    else:
+        print("         немає")
+
+
+# Гард імпорту: `palette_curate.py` бере звідси CIEDE2000 і моделі дальтонізму, і без цього
+# рядка кожен імпорт друкував би цілий звіт.
+if __name__ == "__main__":
+    main()
