@@ -73,9 +73,19 @@ PLAIN_EXTRA = {"ContentType": "application/json",
 GZ_EXTRA = {"ContentType": "application/json", "ContentEncoding": "gzip",
             "CacheControl": "public, max-age=300, stale-while-revalidate=86400"}
 
+# ⚠️ Файли, які пайплайн НЕ стискає заздалегідь (на відміну від area-тайлів, README крок 4).
+# Їх треба гзипити тут, у коді. Не список, а джерело правди: усе, чого тут немає, піде як
+# «уже стиснений тайл» — тобто з заголовком `Content-Encoding: gzip` БЕЗ самого gzip, і на
+# клієнті це битий файл. Саме так ледь не поїхав `trails.geojson` (D34).
+SPECIAL = {
+    "tettsteder.geojson": "P20",
+    "poi.geojson": "D34",
+    "trails.geojson": "D34 стежки",
+}
+
 jobs = []   # (key, path, gzip_in_code, extra)
 for f in sorted(glob.glob(os.path.join(TILES, "*.geojson"))):
-    if os.path.basename(f) in ("tettsteder.geojson", "poi.geojson"): continue
+    if os.path.basename(f) in SPECIAL: continue
     jobs.append((os.path.basename(f), f, False, TILE_EXTRA))
 n_tiles = len(jobs)
 
@@ -84,7 +94,7 @@ if os.path.exists(mf):
     jobs.append(("manifest.json", mf, False, PLAIN_EXTRA))
 else:
     print(f"WARN: {mf} не знайдено — скопіюй manifest.json (uncompressed) у {TILES} перед заливкою")
-for extra_name, why in (("tettsteder.geojson", "P20"), ("poi.geojson", "D34")):
+for extra_name, why in SPECIAL.items():
     p = os.path.join(TILES, extra_name)
     if os.path.exists(p):
         jobs.append((extra_name, p, True, GZ_EXTRA))
