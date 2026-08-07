@@ -19,7 +19,7 @@
 | **Немає** background-location | `AndroidManifest.xml` — `ACCESS_BACKGROUND_LOCATION` відсутній; є лише `FOREGROUND_SERVICE_LOCATION` |
 | **Немає** аналітики/крашлітики/реклами | `grep -riE "firebase\|analytics\|crashlytics\|admob\|sentry"` по `app/build.gradle.kts` + `libs.versions.toml` → **0 збігів** |
 | Логін — **опційний** (D36), вимкнено гейтом за замовчуванням | `CredentialManager`+`AuthorizationClient` є (пакет `backup/`), але секція «Синк» з'являється лише коли заповнено `default_web_client_id` (порожній → фічі нема). Без входу — як 2.1–2.3. Деталі декларації → **2.4** |
-| Мережа — рівно 3 адресати (+1 мертвий фолбек) | `style.json:6` + `MapBasemap.kt` (Kartverket) · `CdnGeoJsonAreaSource.kt` (R2) · `StreifApp.kt` + `PoiCard.kt:48` (Wikimedia) · `AreaSource.kt:29-31` (Overpass — недосяжний при `USE_CDN=true`, `build.gradle.kts:27`) |
+| Мережа — рівно 4 адресати (+1 мертвий фолбек) | `style.json:6` + `MapBasemap.kt` (Kartverket) · `CdnGeoJsonAreaSource.kt` (R2) · `StreifApp.kt` + `PoiCard.kt:48` (Wikimedia) · **`ProfileButton.kt` (`googleusercontent.com` — фото акаунта, ЛИШЕ після входу; заувага 7, 2026-08-07)** · `AreaSource.kt:29-31` (Overpass — недосяжний при `USE_CDN=true`, `build.gradle.kts:27`) |
 | Усі endpoint'и — **HTTPS** | ті самі рядки; жодного `http://` |
 | In-app «видалити все локальне» **свідомо не робимо** (рішення власника, 2026-07-21) | Натомість у Settings є **«Видалити копію з Google Drive»** (`BackupManager.deleteRemote()` + вимкнення бекапу). Локальне стирається **видаленням застосунку**: `AndroidManifest.xml:18` — `android:allowBackup="false"`, тож ОС видаляє приватну теку й **не відновлює** її при перевстановленні. Той самий шлях уже описано в політиці приватності, п. 7 |
 
@@ -90,8 +90,10 @@ user's device»**. Запит тайла `area_{la}_{lo}.geojson` (`CdnGeoJsonAr
 > Перестраховка тут коштує нічого, помилка — зняття застосунку.
 >
 > ⚠️ Це рішення **не переглядати** без нової перевірки коду: воно спирається на факт, що застосунок
-> ходить до **трьох** зовнішніх адресатів (R2, `cache.kartverket.no`, Wikimedia), і саме підложка
-> Kartverket на z18 (~150 м) заводить нас у визначення «precise» (краще ніж 3 км²).
+> ходить до **чотирьох** зовнішніх адресатів (R2, `cache.kartverket.no`, Wikimedia,
+> `googleusercontent.com`), і саме підложка Kartverket на z18 (~150 м) заводить нас у визначення
+> «precise» (краще ніж 3 км²). ⚠️ Четвертий адресат (фото акаунта) **локації не несе взагалі** й на
+> цей висновок не впливає — його додано 2026-08-07 разом із аватаром у верхній панелі.
 
 ### 2.2a P32 «зони під камерою» — звірено 2026-07-31, декларація змін **не потребує**
 
@@ -148,6 +150,8 @@ Kartverket **уже зараз, щоразу як гортаєш мапу** — 
 |---|---|---|
 | Personal info → Email address — Collected? | **Yes** | Google-вхід (`CredentialManager`) дає email акаунта; лежить локально, показує, куди йде копія |
 | Email address — Shared? | **No** | Email нікому не передаємо; він лише ідентифікує **власний** акаунт користувача для запису |
+| Photos → Profile photo — Collected? | **Yes** | ⚠️ **Додано 2026-08-07 разом із аватаром у верхній панелі (заувага 7).** З того самого ID-токена беремо **URL** фото акаунта (`SettingsStore.backupPhotoUrl`) і показуємо кружок угорі, щоб було видно, у який акаунт іде копія. Зберігається **локально**, зникає при виході. Саме зображення вантажиться з `googleusercontent.com` — це четвертий мережевий адресат (§3) |
+| Profile photo — Shared? | **No** | Нікому не передаємо. Дані рухаються в **зворотному** напрямку: не ми Google, а Google нам — і лише про акаунт, у який людина сама ввійшла |
 | App activity (розкриття/POI/колекції/сесії) — Collected? | **Yes** | Агрегат прогресу пишеться у **власний** Drive користувача (App Data Folder, scope `drive.appdata`) |
 | App activity — Shared? | **No** | Це власне сховище користувача (Google як databehandler за його ж запитом), не передача третій стороні |
 | Purpose (обидва типи) | **App functionality** (єдина) | Резервна копія / відновлення прогресу. Без реклами/аналітики/персоналізації |
@@ -217,6 +221,7 @@ prominent disclosure для телеметрії існує так само, я�
 | **Cloudflare R2** | ❌ не sharing | Наше власне сховище. Play прямо виводить з-під «sharing» передачу **«service provider that processes it on your behalf»** |
 | **Kartverket** | ❌ не sharing | Не отримує «дані користувача, зібрані застосунком» — отримує запит на статичний тайл, ініційований дією користувача (він відкрив карту). Play виводить з-під sharing передачу «based on a specific user-initiated action». Кожен картографічний застосунок працює так само |
 | **Wikimedia Commons** | ❌ не sharing | Запит фото відбувається **лише** коли користувач тапнув картку POI (`PoiCard.kt:48`) — user-initiated, і не містить локації взагалі, лише назву файлу |
+| **Google** (`googleusercontent.com`) | ❌ не sharing | Фото акаунта в аватарі (`ProfileButton.kt`). ⚠️ Тут навіть простіше, ніж у решті: **дані не «передаються» Google — вони від Google і надходять**. Запит іде лише після того, як людина сама ввійшла в СВІЙ Google-акаунт (user-initiated, D26 deferred auth), не містить ані локації, ані історії прогулянок, а адресат уже й так знає власний акаунт. Не ввійшов — запиту не існує |
 
 ⚠️ **Що врахувати:** «No» тут — обґрунтоване прочитання винятків Play, а не самоочевидний факт.
 Якщо волієш нульовий ризик спору — можна поставити **Shared = Yes** для Location з purpose *App functionality*.
@@ -233,7 +238,7 @@ prominent disclosure для телеметрії існує так само, я�
 
 | Питання | Відповідь | Чому |
 |---|---|---|
-| **Is all of the user data collected by your app encrypted in transit?** | **Yes** | Усі три адресати — HTTPS: `style.json:6`, `MapBasemap.kt` (усі 4 стилі), `CdnGeoJsonAreaSource.kt:23,53`, Wikimedia через OkHttp/Coil. Жодного cleartext-URL у коді; `usesCleartextTraffic` не вмикали |
+| **Is all of the user data collected by your app encrypted in transit?** | **Yes** | Усі чотири адресати — HTTPS: `style.json:6`, `MapBasemap.kt` (усі 4 стилі), `CdnGeoJsonAreaSource.kt:23,53`, Wikimedia й `googleusercontent.com` через OkHttp/Coil. Жодного cleartext-URL у коді; `usesCleartextTraffic` не вмикали |
 | **Do you provide a way for users to request that their data be deleted?** | **Yes** | Обґрунтування — нижче, окремим блоком (це єдина відповідь, яка змінилась після рішення 2026-07-21) |
 | **Independent security review** (опційне) | **No** | Незалежного аудиту не проходили. D23-review — архітектурний, не security-аудит |
 | **Data deletion within 90 days** (якщо доступне) | **не ставити** | Це окрема заява — «дані стираються автоматично за 90 днів». Для копії в Drive і локальних даних вона безглузда (вони живуть, доки їх тримає користувач), а телеметрію ми стираємо **за запитом і в кінці тесту**, а не за розкладом. ⚠️ У формі це третій варіант відповіді на «чи можуть користувачі надіслати запит на видалення» — обирати треба **перший** («Так»), не його |

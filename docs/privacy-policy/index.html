@@ -138,11 +138,17 @@
         <td>IP-adresse og hvilket bilde som hentes — altså hvilket turmål du har åpnet kortet til</td>
         <td>Illustrasjonsbilde på stedskortet</td>
       </tr>
+      <tr>
+        <td><strong>Google</strong><br><code>googleusercontent.com</code></td>
+        <td>IP-adresse og adressen til profilbildet ditt. Bare hvis du har logget inn (punkt 10) —
+        ellers går denne forespørselen aldri ut. Ingen posisjon, ingen turdata.</td>
+        <td>Profilbildet øverst i appen, slik at du ser hvilken konto sikkerhetskopien går til</td>
+      </tr>
     </table>
     <p><strong>Merk forskjellen:</strong> disse forespørslene røper <em>omtrentlig område</em>, fordi et kart
     må vite hvilket område det skal tegne. De inneholder ikke GPS-sporet ditt, ikke turhistorikken din, og
     ingenting som identifiserer deg som person. Vi lagrer ingen slike forespørsler koblet til deg.</p>
-    <p>Kartverket og Wikimedia Commons er selvstendige aktører med egne personvernerklæringer.
+    <p>Kartverket, Wikimedia Commons og Google er selvstendige aktører med egne personvernerklæringer.
     Cloudflare fungerer som databehandler for oss (ren fillagring).</p>
 
     <h2>5. Tillatelser appen ber om</h2>
@@ -208,8 +214,9 @@
       <li><strong>Hvor:</strong> i <em>din egen</em> Google-konto, i en skjult app-mappe som bare Streif har
       tilgang til (tilgangsområdet <code>drive.appdata</code>). Vi ber ikke om tilgang til resten av Google
       Disk, og vi verken hoster eller leser sikkerhetskopien.</li>
-      <li><strong>Hva vi får vite:</strong> kun e-postadressen til Google-kontoen du velger, slik at appen
-      kan vise hvilken konto sikkerhetskopien går til. Den lagres lokalt på telefonen.</li>
+      <li><strong>Hva vi får vite:</strong> e-postadressen til Google-kontoen du velger, og adressen til
+      profilbildet ditt hvis kontoen har ett. Begge deler brukes bare til å vise hvilken konto
+      sikkerhetskopien går til, og begge lagres lokalt på telefonen. De slettes når du logger ut.</li>
       <li><strong>Når:</strong> automatisk én gang i døgnet, men bare når telefonen lader og har nett – vi
       vekker den aldri i lomma. Du kan også sikkerhetskopiere når som helst med et trykk.</li>
       <li><strong>Kontroll:</strong> du kan slå av sikkerhetskopiering når som helst i Innstillinger; da
