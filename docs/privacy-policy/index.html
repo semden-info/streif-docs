@@ -219,10 +219,14 @@
       sikkerhetskopien går til, og begge lagres lokalt på telefonen. De slettes når du logger ut.</li>
       <li><strong>Når:</strong> automatisk én gang i døgnet, men bare når telefonen lader og har nett – vi
       vekker den aldri i lomma. Du kan også sikkerhetskopiere når som helst med et trykk.</li>
-      <li><strong>Kontroll:</strong> du kan slå av sikkerhetskopiering når som helst i Innstillinger; da
-      slutter appen å skrive til Drive. Du kan også <strong>slette kopien fra Google Disk direkte i appen</strong>
-      (Innstillinger → «Slett kopien fra Google Disk»). Kopien ligger uansett i din egen Google-konto, så du
-      har full kontroll over den.</li>
+      <li><strong>Kontroll:</strong> du kan logge ut når som helst fra kontomenyen øverst i appen; da
+      slutter appen å skrive til Drive, og framgangen din blir liggende på telefonen. Du kan også
+      <strong>slette kopien fra Google Disk direkte i appen</strong> (Innstillinger → «Slett kopien fra
+      Google Disk»), eller velge å slette den i samme steg som du logger ut.</li>
+      <li><strong>Du er ikke avhengig av appen for å bli kvitt kopien.</strong> Den ligger i din egen
+      Google-konto, og du kan slette den fra Google Disk selv – i innstillingene for Disk, under
+      administrasjon av apper som har lagret skjulte appdata. Det gjelder også om du har avinstallert
+      Streif.</li>
     </ul>
     <p>Behandlingsgrunnlaget er ditt <strong>samtykke</strong> (GDPR art. 6 nr. 1 bokstav a), gitt ved at du
     logger inn og slår funksjonen på.</p>
@@ -337,11 +341,17 @@
         <td>IP address and which image is fetched — that is, which destination card you opened</td>
         <td>Illustrative photo on the place card</td>
       </tr>
+      <tr>
+        <td><strong>Google</strong><br><code>googleusercontent.com</code></td>
+        <td>IP address and the address of your profile picture. Only if you have signed in (section 10) —
+        otherwise this request never happens. No location, no walk data.</td>
+        <td>Your profile picture at the top of the app, so you can see which account the backup goes to</td>
+      </tr>
     </table>
     <p><strong>Note the distinction:</strong> these requests reveal an <em>approximate area</em>, because a map
     has to know which area to draw. They do not contain your GPS track, your walk history, or anything that
     identifies you as a person. We do not store any such requests linked to you.</p>
-    <p>Kartverket and Wikimedia Commons are independent parties with their own privacy policies.
+    <p>Kartverket, Wikimedia Commons and Google are independent parties with their own privacy policies.
     Cloudflare acts as a data processor for us (plain file storage).</p>
 
     <h2>5. Permissions the app requests</h2>
@@ -408,14 +418,18 @@
       <li><strong>Where:</strong> in <em>your own</em> Google account, in a hidden app-only folder that only
       Streif can access (the <code>drive.appdata</code> scope). We do not request access to the rest of your
       Google Drive, and we neither host nor read the backup.</li>
-      <li><strong>What we learn:</strong> only the e-mail address of the Google account you choose, so the
-      app can show which account the backup goes to. It is stored locally on the phone.</li>
+      <li><strong>What we learn:</strong> the e-mail address of the Google account you choose, and the
+      address of your profile picture if the account has one. Both are used only to show which account the
+      backup goes to, both are stored locally on the phone, and both are deleted when you sign out.</li>
       <li><strong>When:</strong> automatically once a day, but only while the phone is charging and online —
       we never wake it in your pocket. You can also back up at any time with a single tap.</li>
-      <li><strong>Control:</strong> you can turn backup off at any time in Settings, which stops the app from
-      writing to Drive. You can also <strong>delete the copy from Google Drive directly in the app</strong>
-      (Settings → "Delete the copy from Google Drive"). The copy sits in your own Google account either way,
-      so you stay in full control of it.</li>
+      <li><strong>Control:</strong> you can sign out at any time from the account menu at the top of the app,
+      which stops it from writing to Drive; your progress stays on the phone. You can also
+      <strong>delete the copy from Google Drive directly in the app</strong> (Settings → "Delete the copy
+      from Google Drive"), or choose to delete it in the same step as signing out.</li>
+      <li><strong>You do not depend on the app to get rid of the copy.</strong> It sits in your own Google
+      account, and you can delete it from Google Drive yourself — in Drive's settings, under the management
+      of apps that have stored hidden app data. That holds even if you have uninstalled Streif.</li>
     </ul>
     <p>The legal basis is your <strong>consent</strong> (GDPR Art. 6(1)(a)), given by signing in and turning
     the feature on.</p>
