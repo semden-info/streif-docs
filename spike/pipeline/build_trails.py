@@ -149,15 +149,50 @@ for f in features:
         routes[trail_id]["segments"] += 1
         routes[trail_id]["len"] += L
 
+for f in out:
+    # ⚠️ Позначка джерела на КОЖНІЙ фічі (заувага 9). Без неї відкат OSM неможливий у принципі:
+    # ані відрізнити, ані порахувати, ані сказати людині, звідки стежка. Дешевше поле в проєкті
+    # важко придумати, а без нього все інше — здогадки.
+    f["properties"]["src"] = "kartverket"
+
+# ── OSM: доповнення набору (заувага 9). ВИМКНЕНО, поки не передано `--osm` ────────────────────────
+#
+# ⚠️ **«Вимкнено» тут — стан за замовчуванням, а не окрема дія.** Це і є найдешевший рівень відкату:
+# якщо польова перевірка покаже, що стежки з OSM погані, достатньо зібрати без прапорця й залити —
+# `trails.geojson` іде з CDN, тож раунд у Play не потрібен. Прогрес на зниклих стежках осиротіє
+# (рядки в Room лишаться, але жодна ділянка їх не питатиме) — не зникне й нічого не зламає; якщо
+# ті самі лінії повернуться з тими самими id, він повернеться сам.
+osm_path = opts.get("--osm")
+osm_stats = None
+if osm_path:
+    import osm_trails
+    osm_feats, osm_stats = osm_trails.build(
+        osm_path,
+        target_m=TARGET_M,
+        min_tail_m=MIN_TAIL_M,
+        min_chain_m=float(opts.get("--osm-min", 500)),
+        max_chain_m=float(opts.get("--osm-max", 5000)),
+        landmarks=opts.get("--landmarks"),
+    )
+    out.extend(osm_feats)
+
+attribution = "© Kartverket (Turrutebasen, CC BY 4.0)"
+if osm_path:
+    # ⚠️ ODbL вимагає атрибуції — це не формальність і не косметика.
+    attribution += " · © OpenStreetMap contributors (ODbL)"
+
 fc = {"type": "FeatureCollection",
-      "attribution": "© Kartverket (Turrutebasen, CC BY 4.0)",
+      "attribution": attribution,
       "features": out}
 io.open(out_path, "w", encoding="utf-8", newline="\n").write(
     json.dumps(fc, ensure_ascii=False, separators=(",", ":")))
 
-lens = [f["properties"]["len_m"] for f in out]
-short = [x for x in (f["properties"]["len_m"] for f in out) if x < MIN_TAIL_M]
-print("маршрутів: %d · сегментів: %d" % (len(routes), len(out)))
+# ⚠️ Статистика нижче — ЛИШЕ про Turrutebasen. Спершу я порахував її по всьому `out` уже після
+# доливання OSM, і вийшло «34 маршрути · 1222 сегменти»: числа з різних джерел в одному рядку.
+kv = [f for f in out if f["properties"]["src"] == "kartverket"]
+lens = [f["properties"]["len_m"] for f in kv]
+short = [x for x in lens if x < MIN_TAIL_M]
+print("Turrutebasen: маршрутів %d · сегментів %d" % (len(routes), len(kv)))
 # ⚠️ Називаємо вголос, а не ховаємо: коротка ділянка рахується як ПОВНА, тож вона легша за решту.
 # Причина структурна — Turrutebasen ріже маршрут на багато коротких фіч, а ми ріжемо ВСЕРЕДИНІ
 # фічі (щоб `segment_id` тримався за `lokalId`). Зшивати фічі маршруту перед нарізкою було б
@@ -170,8 +205,14 @@ if lens:
     print("довжина сегмента: мін %d · медіана %d · макс %d · сума %.1f км"
           % (lens_sorted[0], lens_sorted[len(lens) // 2], lens_sorted[-1], sum(lens) / 1000.0))
     print("коротших за %d м: %d із %d (%.1f%%), а це лише %.2f км із %.1f — артефакт нарізки джерела"
-          % (MIN_TAIL_M, len(short), len(out), 100.0 * len(short) / len(out),
+          % (MIN_TAIL_M, len(short), len(kv), 100.0 * len(short) / len(kv),
              sum(short) / 1000.0, sum(lens) / 1000.0))
+if osm_stats:
+    print()
+    print("OSM (заувага 9): ланцюгів %d · %.1f км · сегментів %d"
+          % (osm_stats["chains"], osm_stats["km"], osm_stats["segments"]))
+    print("  відкинуто: коротших за поріг %d · мереж (задовгих) %d"
+          % (osm_stats["dropped_short"], osm_stats["dropped_mesh"]))
 print("→ %s (%d КБ)" % (out_path, len(json.dumps(fc)) // 1024))
 print()
 print("найдовші маршрути:")
