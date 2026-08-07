@@ -176,6 +176,68 @@ if osm_path:
     )
     out.extend(osm_feats)
 
+# ── D34 нарешті виконано: СТЕЖКИ ЛИШЕ ПОЗА МІСТОМ (рішення Дениса 2026-08-07) ─────────────────────
+#
+# D34 ④ казав це з самого початку, але пайплайн не мав полігонів поселень, і правило залишалось на
+# папері. Тепер `tettsteder.geojson` є, і воно виконується.
+#
+# **Чому взагалі:** у місті будинки вже покривають той самий крок, тож стежка там зараховує ту саму
+# прогулянку вдруге — і незрозуміло, що саме ти просуваєш. Плюс саме в місті живе «сміття» OSM
+# (доріжки між під'їздами). Виміряно перед рішенням: у Kartverket у поселеннях лише **2%** ділянок,
+# у OSM — **35%**.
+#
+# ⚠️ **Фільтруємо МАРШРУТАМИ, а не ділянками.** Порізати маршрут по межі поселення означало б, що в
+# маршруту «з міста в гори» зникає початок: змінюється знаменник «N з M», а прогрес на викинутих
+# ділянках осиротіє посеред пройденого. Тому маршрут відкидається цілком, якщо БІЛЬША ЧАСТИНА його
+# довжини лежить у поселенні. Наслідок названо чесно: `Volda sentrum – Prestholmen` (та сама
+# стежка, на якій механіка вперше спрацювала в полі) зникає — це прийнято свідомо.
+tett_path = opts.get("--tettsteder")
+if tett_path:
+    tt = json.load(io.open(tett_path, encoding="utf-8"))
+
+    def _rings(f):
+        g = f["geometry"]
+        polys = g["coordinates"] if g["type"] == "MultiPolygon" else [g["coordinates"]]
+        return [poly[0] for poly in polys]
+
+    _polys = [r for f in tt.get("features", []) for r in _rings(f)]
+
+    def _inside(pt, ring):
+        x, y = pt
+        c, n, j = False, len(ring), len(ring) - 1
+        for i in range(n):
+            xi, yi = ring[i][0], ring[i][1]
+            xj, yj = ring[j][0], ring[j][1]
+            if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / ((yj - yi) or 1e-12) + xi):
+                c = not c
+            j = i
+        return c
+
+    def _in_town(pt):
+        return any(_inside(pt, r) for r in _polys)
+
+    by_trail = {}
+    for f in out:
+        pr = f["properties"]
+        c = f["geometry"]["coordinates"]
+        mid = c[len(c) // 2]
+        t = by_trail.setdefault(pr["trail"], {"in": 0.0, "all": 0.0, "name": pr["name"]})
+        t["all"] += pr["len_m"]
+        if _in_town(mid):
+            t["in"] += pr["len_m"]
+
+    urban = {t for t, v in by_trail.items() if v["all"] > 0 and v["in"] * 2 > v["all"]}
+    dropped_km = sum(v["all"] for t, v in by_trail.items() if t in urban) / 1000.0
+    before = len(out)
+    out = [f for f in out if f["properties"]["trail"] not in urban]
+    print()
+    print("поза містом (D34): відкинуто маршрутів %d · ділянок %d · %.1f км"
+          % (len(urban), before - len(out), dropped_km))
+    for t in sorted(urban, key=lambda t: -by_trail[t]["all"])[:6]:
+        v = by_trail[t]
+        print("  %-28s %.1f км (у місті %.0f%%)"
+              % ((v["name"] or t)[:28], v["all"] / 1000.0, 100.0 * v["in"] / v["all"]))
+
 attribution = "© Kartverket (Turrutebasen, CC BY 4.0)"
 if osm_path:
     # ⚠️ ODbL вимагає атрибуції — це не формальність і не косметика.
