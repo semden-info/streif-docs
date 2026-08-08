@@ -21,6 +21,7 @@
 import io
 import json
 import gzip
+import math
 import os
 import time
 import urllib.request
@@ -28,6 +29,11 @@ import urllib.request
 KOMMUNEINFO = "https://ws.geonorge.no/kommuneinfo/v1/kommuner/{code}/omrade?utkoordsys=4258"
 PUNKT = "https://ws.geonorge.no/kommuneinfo/v1/punkt?nord={lat}&ost={lon}&koordsys=4258"
 UA = "Streif-pipeline/0.1 (contact@semden.info)"
+
+# Скільки разів доганяти сусідів. Стеля, а не очікування: раунди сходяться за один-два (кожен
+# додає щонайменше одну комуну), а без стелі помилка в даних дала б нескінченний цикл із запитами
+# до чужого сервісу.
+MAX_DISCOVER_ROUNDS = 6
 
 
 # ── мережа з кешем на диску: сервіс Kartverket не смикаємо повторно ───────────────────────────────
@@ -115,9 +121,42 @@ def punkt_kommune(lon, lat, cache):
         return None, None
 
 
+R_EARTH = 6371008.8
+
+
+def _hav(a, b):
+    """Метри між (lon, lat)."""
+    lon1, lat1 = math.radians(a[0]), math.radians(a[1])
+    lon2, lat2 = math.radians(b[0]), math.radians(b[1])
+    dlat, dlon = lat2 - lat1, lon2 - lon1
+    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    return 2 * R_EARTH * math.asin(math.sqrt(h))
+
+
 def _mid(feature):
+    """Точка на ПОЛОВИНІ ДОВЖИНИ ділянки — не середній вузол за індексом.
+
+    ⚠️ Різниця не теоретична (знахідка review 5). Вузли в джерелі стоять нерівномірно — там, де
+    рельєф складніший, густіше (це прямо записано в `build_trails.cut`). Тому «середній вузол»
+    зміщений у бік густої частини, і на прикордонній ділянці це віддає ЦІЛУ її довжину не тій
+    комуні. Для маршруту, близького до 50/50, кількох таких ділянок досить, щоб перевернути тег
+    цілого маршруту.
+
+    Половина довжини такого зсуву не має: вона за побудовою ділить ділянку навпіл по метрах.
+    """
     c = feature["geometry"]["coordinates"]
-    return c[len(c) // 2]
+    if len(c) < 2:
+        return c[0]
+    half = sum(_hav(c[i], c[i + 1]) for i in range(len(c) - 1)) / 2.0
+    acc = 0.0
+    for i in range(len(c) - 1):
+        d = _hav(c[i], c[i + 1])
+        if acc + d >= half:
+            t = (half - acc) / d if d > 0 else 0.0
+            return (c[i][0] + (c[i + 1][0] - c[i][0]) * t,
+                    c[i][1] + (c[i + 1][1] - c[i][1]) * t)
+        acc += d
+    return c[-1]
 
 
 def tag_routes_by_kommune(features, seed_codes, cache, discover=True, log=print):
@@ -144,54 +183,56 @@ def tag_routes_by_kommune(features, seed_codes, cache, discover=True, log=print)
     routes = {}
     for f in features:
         p = f["properties"]
-        L = float(p.get("len_m") or 0)
         r = routes.setdefault(p.get("trail", ""), {"by": {}, "unknown": 0.0, "feats": [],
-                                                   "name": p.get("name", "")})
+                                                   "orphans": [], "name": p.get("name", "")})
         r["feats"].append(f)
-        lon, lat = _mid(f)
-        hit = None
-        for code, (_, area) in koms.items():
-            if area.contains(lon, lat):
-                hit = code
-                break
-        if hit:
-            r["by"][hit] = r["by"].get(hit, 0.0) + L
-        else:
-            r["unknown"] += L
 
-    # 2) автовиявлення: маршрут, більшість якого поза відомими межами, питає kommuneinfo про свою
-    #    середню ділянку — і знайдена комуна стає повноцінним кандидатом для ВСІХ маршрутів.
+    def assign():
+        """Перекласти ділянки по комунах наново. Тримає й список НЕРОЗПІЗНАНИХ фіч."""
+        for r in routes.values():
+            r["by"], r["unknown"], r["orphans"] = {}, 0.0, []
+            for f in r["feats"]:
+                L = float(f["properties"].get("len_m") or 0)
+                lon, lat = _mid(f)
+                hit = None
+                for code, (_, area) in koms.items():
+                    if area.contains(lon, lat):
+                        hit = code
+                        break
+                if hit:
+                    r["by"][hit] = r["by"].get(hit, 0.0) + L
+                else:
+                    r["unknown"] += L
+                    r["orphans"].append(f)
+
+    assign()
+
+    # 2) автовиявлення сусідів. bbox джерела — прямокутник, тож у набір заходять комуни, яких у
+    #    списку не було; без них маршрут лишиться без одиниці, а прогрес на ньому — недосяжним.
+    #
+    # ⚠️ **Раундами, поки знаходяться нові** (знахідка review 4). Один раунд ламався на маршруті,
+    # що виходить із комуни й повертається: питали СЕРЕДНЮ ділянку, знаходили комуну B, а більшість
+    # лишалась у нерозпізнаній A — і маршрут діставав порожній тег. Тепер питаємо саме НЕРОЗПІЗНАНУ
+    # ділянку, і після кожного додавання перекладаємо все наново.
     if discover:
-        added = []
-        for tid, r in routes.items():
-            best = max(r["by"].values()) if r["by"] else 0.0
-            if r["unknown"] <= best:
-                continue
-            mid_feat = r["feats"][len(r["feats"]) // 2]
-            lon, lat = _mid(mid_feat)
-            code, name = punkt_kommune(lon, lat, cache)
-            if code and code not in koms:
-                nm, area = load_kommune(code, cache)
-                koms[code] = (nm or name, area)
-                added.append("%s %s" % (code, nm or name))
-        if added:
-            log("  автовиявлено сусідів: %s" % ", ".join(sorted(set(added))))
-            # перерахунок ПОВНІСТЮ, а не лише «сиротам»: нова межа може забрати ділянки й у тих
-            # маршрутів, які вже мали більшість, — інакше сума по одиницях перестала б сходитись.
+        for _round in range(MAX_DISCOVER_ROUNDS):
+            added = []
             for r in routes.values():
-                r["by"], r["unknown"] = {}, 0.0
-                for f in r["feats"]:
-                    L = float(f["properties"].get("len_m") or 0)
-                    lon, lat = _mid(f)
-                    hit = None
-                    for code, (_, area) in koms.items():
-                        if area.contains(lon, lat):
-                            hit = code
-                            break
-                    if hit:
-                        r["by"][hit] = r["by"].get(hit, 0.0) + L
-                    else:
-                        r["unknown"] += L
+                best = max(r["by"].values()) if r["by"] else 0.0
+                if r["unknown"] <= best or not r["orphans"]:
+                    continue
+                lon, lat = _mid(r["orphans"][len(r["orphans"]) // 2])
+                code, name = punkt_kommune(lon, lat, cache)
+                if code and code not in koms:
+                    nm, area = load_kommune(code, cache)
+                    koms[code] = (nm or name, area)
+                    added.append("%s %s" % (code, nm or name))
+            if not added:
+                break
+            log("  автовиявлено сусідів: %s" % ", ".join(sorted(set(added))))
+            # Перекладаємо ПОВНІСТЮ, а не лише «сиротам»: нова межа може забрати ділянки й у тих
+            # маршрутів, які вже мали більшість, — інакше сума по одиницях перестала б сходитись.
+            assign()
 
     # 3) тег на кожну фічу маршруту-переможця
     report = {}
@@ -214,6 +255,59 @@ def tag_routes_by_kommune(features, seed_codes, cache, discover=True, log=print)
     return report
 
 
+def _selftest():
+    """`python geo_units.py --selftest` — перевірки БЕЗ мережі.
+
+    ⚠️ Тестів у цього пайплайна не було взагалі, і review слушно на це вказало. Повного harness тут
+    не заводимо (він потягнув би залежності в проєкт, де їх нема), але два правила, на яких усе
+    тримається, мусять мати сторожа: середина рахується по ДОВЖИНІ, і належність — по більшій
+    частині маршруту, а не по окремій ділянці.
+    """
+    ok = 0
+
+    # 1) середина — по довжині, не по індексу вузла. Вузли згущені на початку: індексна середина
+    #    лишилась би там, хоча майже вся довжина далі.
+    f = {"geometry": {"coordinates": [[0.0, 62.0], [0.001, 62.0], [0.002, 62.0], [1.0, 62.0]]}}
+    x, _ = _mid(f)
+    assert x > 0.4, "середина за довжиною має бути посеред ДОВГОГО ребра, а не серед густих вузлів"
+    assert f["geometry"]["coordinates"][2][0] == 0.002, "вхід не мутуємо"
+    ok += 1
+
+    # 2) вироджені входи не валять збірку
+    assert _mid({"geometry": {"coordinates": [[5.0, 62.0]]}}) == [5.0, 62.0]
+    ok += 1
+
+    # 3) належність — по БІЛЬШІЙ ЧАСТИНІ довжини маршруту, а не по більшості ділянок.
+    #    Дві короткі ділянки в A проти однієї довгої в B → маршрут B.
+    class _FakeArea:
+        def __init__(self, lo, hi):
+            self.lo, self.hi = lo, hi
+
+        def contains(self, x, y):
+            return self.lo <= x < self.hi
+
+    def feat(seg, x0, x1, length):
+        return {"properties": {"seg": seg, "trail": "t", "name": "N", "len_m": length},
+                "geometry": {"coordinates": [[x0, 62.0], [x1, 62.0]]}}
+
+    feats = [feat("a", 0.0, 0.1, 100), feat("b", 0.1, 0.2, 100), feat("c", 1.0, 1.1, 900)]
+    koms_backup = {"A": ("Альфа", _FakeArea(-1.0, 0.5)), "B": ("Бета", _FakeArea(0.5, 2.0))}
+
+    global load_kommune
+    real_load = load_kommune
+    load_kommune = lambda code, cache: koms_backup[code]          # noqa: E731 — на час тесту
+    try:
+        rep = tag_routes_by_kommune(feats, ["A", "B"], cache=".", discover=False, log=lambda *_: None)
+    finally:
+        load_kommune = real_load
+    assert [f["properties"]["kommune"] for f in feats] == ["B", "B", "B"], \
+        "усі ділянки маршруту дістають ОДНУ комуну — ту, де більша частина довжини"
+    assert set(rep) == {"B"} and rep["B"]["routes"] == 1 and rep["B"]["segments"] == 3
+    ok += 1
+
+    print("самоперевірка geo_units: %d із 3 OK" % ok)
+
+
 def print_report(report, log=print):
     log("")
     log("одиниця маршруту (більша частина довжини):")
@@ -228,3 +322,12 @@ def print_report(report, log=print):
         # лишиться в Room, але дістатись до нього буде нічим.
         log("  ⚠️ %d маршрутів без одиниці — у шторці вони не з'являться в жодній вкладці"
             % lost["routes"])
+
+
+if __name__ == "__main__":
+    import sys
+    if "--selftest" in sys.argv:
+        _selftest()
+    else:
+        print(__doc__)
+        print("Це модуль. Перевірка: python geo_units.py --selftest")

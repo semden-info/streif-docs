@@ -256,6 +256,11 @@ if tett_path:
 # тож у набір заходять маршрути, більшість яких поза цільовими комунами: сьогодні це 14 маршрутів ·
 # 26,7 км (17%), з них 12 в Ulstein і 2 в Sykkylven, і всі — марковані Kartverket. Викидати їх
 # означало б осиротити прогрес двічі: зараз і назад при розширенні на весь Møre og Romsdal.
+#
+# ⚠️ Прапорець лишається необов'язковим (є режими збірки, де мережа недоступна), але мовчати про
+# його відсутність не можна: файл БЕЗ тегів формально коректний, і клієнт прочитає порожній тег не
+# як «дані ще їдуть», а як маршрут, якого не видно в шторці. Тому тут гучне попередження, а гейт із
+# ненульовим кодом стоїть у `retag_trails.py` — на шляху, яким ми справді публікуємо (знахідка 6).
 kommuner = [c.strip() for c in str(opts.get("--kommuner", "")).split(",") if c.strip()]
 if kommuner:
     import geo_units
@@ -264,6 +269,13 @@ if kommuner:
     _report = geo_units.tag_routes_by_kommune(
         out, kommuner, opts.get("--cache") or "cache", discover=not opts.get("--no-discover"))
     geo_units.print_report(_report)
+    _lost = _report.get("")
+    if _lost:
+        print("⛔ %d маршрутів без комуни — у шторці статистики їх не буде видно." % _lost["routes"])
+else:
+    print()
+    print("⚠️ БЕЗ --kommuner: у фічах не буде `kommune`, і блок стежок у шторці не фільтруватиметься")
+    print("   за одиницею. Для публікації це не годиться — див. `retag_trails.py`.")
 
 attribution = "© Kartverket (Turrutebasen, CC BY 4.0)"
 if osm_path:
