@@ -111,6 +111,12 @@ for sub in ("manifest", "tettsteder", "poi", "trails"):
         key = sub + "/" + os.path.basename(f)
         jobs.append((key, f, True, GZ_EXTRA))
 
+rg = os.path.join(TILES, "region.json")
+if os.path.exists(rg):
+    # Заголовок регіону для НОВИХ клієнтів (без `byKommune`). Короткий кеш, як у manifest.json:
+    # обидва змінюються разом і читаються першими.
+    jobs.append(("region.json", rg, False, PLAIN_EXTRA))
+
 tj = os.path.join(TILES, "tiles.json")
 if os.path.exists(tj):
     # ⚠️ Для ІНСТРУМЕНТІВ пайплайну, не для застосунку: клієнт `tiles` не читає ніколи. Публікуємо

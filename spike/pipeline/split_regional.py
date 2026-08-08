@@ -195,9 +195,19 @@ def main():
                {"generated": manifest.get("generated"), "tileDeg": deg,
                 "dataVersion": manifest.get("dataVersion"), "kommuner": index}, pretty=True)
 
-    # Кореневий маніфест — той самий, але без мертвого масиву.
+    # ── Два кореневі файли, і різниця між ними — про перехід, а не про формат ────────────────────
+    #
+    # `manifest.json` лишається тим, чим був, мінус мертвий масив `tiles`. ⚠️ `byKommune` звідти
+    # прибрати НЕ МОЖНА: на ньому тримається статистика клієнтів 25-27, і вони оновляться не всі й
+    # не одразу. Єдине, що ми забираємо, — те, чого не читає ЖОДЕН клієнт.
     slim = {k: v for k, v in manifest.items() if k != "tiles"}
     slim_bytes = write_json(os.path.join(outdir, "manifest.json"), slim, pretty=True)
+
+    # `region.json` — заголовок регіону для НОВИХ клієнтів: усе те саме, але вже без `byKommune`,
+    # бо покомунне вони беруть покомунно. Саме цей файл лишається малим на національному масштабі:
+    # `byKommune` на 357 комун коштував би ~2 МБ, а заголовок — десятки кілобайтів.
+    region = {k: v for k, v in slim.items() if k != "byKommune"}
+    region_bytes = write_json(os.path.join(outdir, "region.json"), region, pretty=True)
     # Масив плиток — для інструментів пайплайну (і для повторного прогону цього ж скрипта).
     # ⚠️ Застосунок його не читає ні зараз, ні раніше: у клієнтському коді немає жодного звернення
     # до `tiles`, і саме тому 129 КБ їхали в кожен телефон дарма.
@@ -251,17 +261,19 @@ def main():
         ok = False
 
     print()
-    print("розмір: покомунні разом %.1f КБ · кореневий manifest %.1f КБ (був %.1f КБ, −%.0f%%)"
+    print("розмір: покомунні разом %.1f КБ · manifest.json (для 25-27) %.1f КБ, був %.1f КБ (−%.0f%%)"
           % (total_bytes / 1024, slim_bytes / 1024, len(json.dumps(manifest)) / 1024,
              100 * (1 - slim_bytes / max(1, len(json.dumps(manifest))))))
+    print("        region.json (для нових) %.1f КБ — саме він лишається малим на 357 комунах"
+          % (region_bytes / 1024))
     # ⚠️ Головне число не сума, а те, що тягне ОДИН клієнт. Сума покомунних приблизно дорівнює
     # цілим файлам (структура повторюється), і сама по собі нічого не каже.
     whole = sum(len(json.dumps(x)) for x in (manifest, tett, poi, trails))
     print("що тягне клієнт на першому запуску:")
     for c in sorted(codes, key=lambda c: -(len(by_trail.get(c, [])) + len(by_tett.get(c, [])))) [:3]:
-        one = sum(os.path.getsize(os.path.join(outdir, sub, c + ext))
-                  for sub, ext in (("manifest", ".json"), ("tettsteder", ".geojson"),
-                                   ("poi", ".geojson"), ("trails", ".geojson")))
+        one = region_bytes + sum(
+            os.path.getsize(os.path.join(outdir, sub, c + ext))
+            for sub, ext in (("tettsteder", ".geojson"), ("poi", ".geojson"), ("trails", ".geojson")))
         print("  %-16s %6.1f КБ замість %.1f КБ (−%.0f%%)"
               % (koms[c][0][:16], one / 1024, whole / 1024, 100 * (1 - one / whole)))
     print("найбільші комуни за передзавантаженням:")
