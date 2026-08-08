@@ -94,6 +94,36 @@ if os.path.exists(mf):
     jobs.append(("manifest.json", mf, False, PLAIN_EXTRA))
 else:
     print(f"WARN: {mf} не знайдено — скопіюй manifest.json (uncompressed) у {TILES} перед заливкою")
+# ── P38: покомунні файли лежать у ПІДТЕКАХ (`trails/1577.geojson` тощо) ───────────────────────────
+#
+# ⚠️ Ключ на R2 — просто рядок, тож підтека це коса риска в ключі, а не окрема сутність. Головне
+# тут — розділовий знак: на Windows шлях приходить із `\`, і залитий ключ `trails\1577.geojson`
+# виглядав би майже правильно, а клієнт по ньому не влучив би ніколи.
+#
+# Ці файли пайплайн НЕ стискає заздалегідь (як і решта в `SPECIAL`) → гзипимо в коді.
+for sub in ("manifest", "tettsteder", "poi", "trails"):
+    d = os.path.join(TILES, sub)
+    if not os.path.isdir(d):
+        continue
+    for f in sorted(glob.glob(os.path.join(d, "*"))):
+        if not os.path.isfile(f):
+            continue
+        key = sub + "/" + os.path.basename(f)
+        jobs.append((key, f, True, GZ_EXTRA))
+
+tj = os.path.join(TILES, "tiles.json")
+if os.path.exists(tj):
+    # ⚠️ Для ІНСТРУМЕНТІВ пайплайну, не для застосунку: клієнт `tiles` не читає ніколи. Публікуємо
+    # тому, що вхідні дані пайплайну живуть лише в тимчасовій теці й зникають між сесіями — без
+    # цього файла повторну нарізку не було б із чого зробити.
+    jobs.append(("tiles.json", tj, True, GZ_EXTRA))
+
+idx = os.path.join(TILES, "kommuner.json")
+if os.path.exists(idx):
+    # Індекс — плоский і з коротким кешем: він змінюється при кожному додаванні комуни, а клієнт
+    # читає його першим і без нього не знає, що тягнути.
+    jobs.append(("kommuner.json", idx, False, PLAIN_EXTRA))
+
 for extra_name, why in SPECIAL.items():
     p = os.path.join(TILES, extra_name)
     if os.path.exists(p):
