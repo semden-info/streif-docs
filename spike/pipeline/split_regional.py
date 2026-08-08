@@ -50,10 +50,23 @@ CDN = "https://pub-b1c9ae365792405880b62e24ccda0df1.r2.dev"
 BYTES_PER_BUILDING = 52
 
 
-def load(name, cache, src):
+def load(name, cache, src, fresh=True):
+    """Вхідний файл. `fresh` — тягнути з CDN ЗАВЖДИ, ігноруючи кеш.
+
+    ⚠️ **Знахідка review 12.** `geo_units.fetch` при наявному файлі повертає кеш і CDN не питає
+    взагалі — і це правильно для МЕЖ комун (вони не міняються тижнями), але хибно для чотирьох
+    живих файлів: повторна нарізка після виправлення даних мовчки збирала б із старих. А кеш ще й
+    лежить усередині `outdir` за замовчуванням, тобто відтворити це найлегше саме тим способом,
+    яким нарізку й запускають удруге.
+
+    Тому живі файли тягнемо щоразу; `--offline` лишає старий шлях для роботи без мережі.
+    """
     if src:
         return io.open(os.path.join(src, name), encoding="utf-8").read()
-    return geo_units.fetch(f"{CDN}/{name}", os.path.join(cache, name)).decode("utf-8")
+    path = os.path.join(cache, name)
+    if fresh and os.path.exists(path):
+        os.remove(path)
+    return geo_units.fetch(f"{CDN}/{name}", path).decode("utf-8")
 
 
 def write_json(path, obj, pretty=False):
@@ -92,23 +105,24 @@ def main():
     outdir = args[0] if args else "split"
     cache = opts.get("--cache") or os.path.join(outdir, "cdn-cache")
     src = opts.get("--src")
+    fresh = not opts.get("--offline")   # див. `load`: живі файли за замовчуванням тягнемо заново
     os.makedirs(outdir, exist_ok=True)
 
-    manifest = json.loads(load("manifest.json", cache, src))
+    manifest = json.loads(load("manifest.json", cache, src, fresh))
     # ⚠️ Пастка, у яку легко впасти двічі: цей скрипт ЧИТАЄ `tiles`, а його ж вихід прибирає їх із
     # кореневого маніфесту — тобто повторний прогін по свіжій публікації не знайшов би нічого.
     # Тому масив живе окремим `tiles.json` (лише для інструментів пайплайну; застосунок його не
     # питає ніколи), і читаємо ми звідти, якщо в маніфесті його вже немає.
     if not manifest.get("tiles"):
         try:
-            manifest["tiles"] = json.loads(load("tiles.json", cache, src))["tiles"]
+            manifest["tiles"] = json.loads(load("tiles.json", cache, src, fresh))["tiles"]
             print("`tiles` узято з tiles.json (кореневий маніфест уже нарізаний)")
         except Exception:
             print("⛔ ані manifest.tiles, ані tiles.json — передзавантаження (P36) порахувати нічим")
             sys.exit(2)
-    tett = json.loads(load("tettsteder.geojson", cache, src))
-    poi = json.loads(load("poi.geojson", cache, src))
-    trails = json.loads(load("trails.geojson", cache, src))
+    tett = json.loads(load("tettsteder.geojson", cache, src, fresh))
+    poi = json.loads(load("poi.geojson", cache, src, fresh))
+    trails = json.loads(load("trails.geojson", cache, src, fresh))
     deg = float(manifest.get("tileDeg") or 0.02)
     codes = sorted(manifest.get("byKommune", {}).keys())
     print("вхід: %d плиток · %d поселень · %d POI · %d ділянок · %d комун"
@@ -156,11 +170,26 @@ def main():
     # Плитки → комуни за ГЕОМЕТРІЄЮ ключа, без жодного завантаження: ключ це округлені координати.
     # ⚠️ Плитка на межі потрапляє в ОБИДВІ комуни, і це навмисно: для передзавантаження зайва
     # маленька плитка нешкідлива, а пропущена лишає дірку рівно там, де людина переходить межу.
+    # ⚠️ **Знахідка review 11: п'ять точок — це не перевірка перетину.** Вузька смуга комуни або
+    # шматок берега може проходити плиткою, не накривши ані центру, ані жодного кута, — і тоді
+    # «завантажити комуну» лишало б офлайн-дірку саме на складних берегах, тобто там, де вона
+    # найдорожча. Тому додаємо другий бік: чи є ВЕРШИНА межі всередині плитки. Разом ці дві
+    # перевірки ловлять і «плитка всередині комуни», і «комуна перетинає плитку».
+    kom_pts = {}
+    for c, (_, a) in koms.items():
+        pts = []
+        for rings, _bb in a.polys:
+            pts.extend(rings[0])
+        kom_pts[c] = pts
+
     for t in manifest.get("tiles", []):
         x0, y0, x1, y1 = tile_bbox(t["key"], deg)
         probes = ((x0, y0), (x1, y0), (x0, y1), (x1, y1), ((x0 + x1) / 2, (y0 + y1) / 2))
         for c, (_, a) in koms.items():
-            if any(a.contains(px, py) for px, py in probes):
+            hit = any(a.contains(px, py) for px, py in probes)
+            if not hit:
+                hit = any(x0 <= px <= x1 and y0 <= py <= y1 for px, py in kom_pts[c])
+            if hit:
                 by_tiles.setdefault(c, []).append(t)
 
     # ── запис ────────────────────────────────────────────────────────────────────────────────────
@@ -237,9 +266,19 @@ def main():
         ok = ok and good
         print("  %-34s %8s vs %-8s %s" % (label, got, want, "OK" if good else "РОЗБІЖНІСТЬ"))
 
-    check("поселень розкладено", sum(len(v) for v in by_tett.values()), len(tett["features"]))
-    check("POI розкладено", sum(len(v) for v in by_poi.values()), len(poi["features"]))
-    check("ділянок розкладено", sum(len(v) for v in by_trail.values()), len(trails["features"]))
+    # ⚠️ **Знахідка review 10.** Рахувати треба ЗАПИСАНЕ, а не розкладене: фіча з кодом, якого немає
+    # в `byKommune` (зміна меж, новий код, друкарська помилка в даних), потрапляла у словник — і
+    # звірка казала OK, — але файла для такого коду ніхто не створює, тож із набору вона тихо
+    # зникала. Тепер сума береться лише по кодах, для яких файл справді записано.
+    written = set(codes)
+    check("поселень записано", sum(len(v) for c, v in by_tett.items() if c in written), len(tett["features"]))
+    check("POI записано", sum(len(v) for c, v in by_poi.items() if c in written), len(poi["features"]))
+    check("ділянок записано", sum(len(v) for c, v in by_trail.items() if c in written), len(trails["features"]))
+    orphan = sorted({c for c in list(by_tett) + list(by_poi) + list(by_trail)
+                     if c and c not in written})
+    if orphan:
+        print("  ⛔ коди без файла (є в даних, немає в byKommune): %s" % ", ".join(orphan))
+        ok = False
     check("комун в індексі", len(index), len(codes))
 
     # ⚠️ Плитки СВІДОМО можуть дублюватись між сусідами — звіряємо покриття, не суму.
